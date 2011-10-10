@@ -1,0 +1,201 @@
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>three.js sketchpad</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			*
+			{
+				color: #444;
+				font-family: Monospace;
+				font-size: 12px;
+			}
+			
+			body
+			{
+				margin: 0px;
+				overflow: hidden;
+			}
+			
+			select
+			{
+				text-transform: uppercase;
+				font-size: 11px;
+				text-align: center;
+			}
+			
+			hr
+			{
+				border: 0;
+				height: 1px;
+				background-color: #ccc;
+				margin: 20px 0px;
+			}
+			
+			.gui
+			{
+				color: #ccc;
+				width: 280px;
+				background-color: #fff;
+				border-bottom: 1px solid #ddd;
+				padding: 5px 10px;
+				text-align: center;
+				text-transform: uppercase;
+				line-height: 18px;
+				cursor: default;
+			}
+			
+			.button
+			{
+				padding: 2px;
+				cursor: pointer;
+			}
+			
+			.key
+			{
+				padding: 0px 8px;
+				margin-left: 1px;
+				background-color: #eee;
+			}
+			input{
+				position: relative;
+				left: 400px;
+			}
+			output{
+				position: relative;
+				left: 400px;
+			}
+			#drop_zone {
+				position: relative;
+				left: 400px;
+				width: 700px;
+  				border: 2px dashed #bbb;
+  				-moz-border-radius: 5px;
+  				-webkit-border-radius: 5px;
+  				border-radius: 5px;
+  				padding: 25px;
+  				text-align: center;
+  				font: 16pt bold 'Vollkorn';
+  				color: #bbb;
+			}
+
+		</style>
+	</head>
+	<script id="vertpt" type="x-shader/x-vertex">
+		// create a shared variable for the
+		// VS and FS containing the normal
+		varying vec3 vNormal;
+		varying vec2 vUv;
+		attribute float displacement;
+		uniform float amplitude;
+
+		void main() {
+
+			// set the vNormal value with
+			// the attribute value passed
+			// in by Three.js
+			vNormal = normal;
+			
+			// push the displacement into the three
+			// slots of a 3D vector so it can be
+			// used in operations with other 3D
+			// vectors like positions and normals
+			vec3 newPosition = position + 
+							   normal * 
+							   vec3(displacement * amplitude);
+							   
+			// get position for texture                   
+			vUv = uv;				   
+			gl_Position = projectionMatrix *
+						  modelViewMatrix *
+						  vec4(position,1.0);
+		}
+		</script>
+	<script id="fragpt" type="x-shader/x-fragment">
+	// same name and type as VS
+	varying vec3 vNormal;
+	varying vec2 vUv;
+
+	//give it a changing light source
+	uniform vec3 lightsource;
+	uniform vec3 color;
+	//uniform sampler2D image;
+
+	void main() {
+
+		//texture the object using the vUv points passed from the vertex shader
+		//vec4 texture = texture2D(image, vUv);
+
+		// calc the dot product and clamp
+		// 0 -> 1 rather than -1 -> 1
+		vec3 light = lightsource;
+		
+		// ensure it's normalized
+		light = normalize(light);
+		vec3 hybrid = lightsource*color;
+		hybrid = normalize(hybrid);
+		// calculate the dot product of
+		// the light to the vertex normal
+		float dProd = max(0.0, dot(vNormal, light));
+		
+		hybrid = hybrid*dProd;
+		hybrid = normalize(hybrid);
+		// feed into our frag colour with our texture
+		//gl_FragColor = vec4(dProd,dProd,dProd, 1.0 );
+		gl_FragColor = vec4(vec3(color),1.0);
+	  
+	}
+	</script>
+	<body>
+		<!--<div id="info">
+			<a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - WebGL morph target example
+		</div>-->
+		<div id="drop_zone">Drop files here</div>
+		<output id="list"></output>
+
+		<script>
+ 			function handleFileSelect(evt) {
+    			evt.stopPropagation();
+    			evt.preventDefault();
+
+    			var files = evt.dataTransfer.files; // FileList object.
+
+    			// files is a FileList of File objects. List some properties.
+    			var output = [];
+    			for (var i = 0, f; f = files[i]; i++) {
+      				output.push('<li><strong>', f.name, '</strong> (', f.type || 'n/a', ') - ',
+                	f.size, ' bytes, last modified: ',
+                	f.lastModifiedDate.toLocaleDateString(), '</li>');
+    			}
+   				//document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
+   				alert(output.join(''));
+  			}
+
+  			function handleDragOver(evt) {
+    			evt.stopPropagation();
+    			evt.preventDefault();
+  			}
+
+  			// Setup the dnd listeners.
+  			var dropZone = document.getElementById('drop_zone');
+  			dropZone.addEventListener('dragover', handleDragOver, false);
+  			dropZone.addEventListener('drop', handleFileSelect, false);
+		</script>
+		
+		<script type="text/javascript" src="js/Three.js"></script>
+		<script type="text/javascript" src="js/ThreeCanvas.js"></script>
+		<script type="text/javascript" src="js/ThreeExtras.js"></script>
+		<script type="text/javascript" src="js/Detector.js"></script>
+		<script type="text/javascript" src="js/RequestAnimationFrame.js"></script>
+		<script type="text/javascript" src="js/jquery-1.6.2.min.js"></script>
+		<script type="text/javascript" src="js/menu.js"></script>
+		<script type="text/javascript" src="js/color/colorselector.js"></script>
+		<script type="text/javascript" src="js/color/colorutils.js"></script>
+		<script type="text/javascript" src="js/color/palette.js"></script>
+		<script type="text/javascript" src="js/main.js"></script>
+		<script type="text/javascript" src="js/swfobject.js"></script>
+		<script type="text/javascript" src="js/downloadify.min.js"></script>
+	</body>
+</html>
