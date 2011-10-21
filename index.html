@@ -7,80 +7,87 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
 			*
-			{
-				color: #444;
-				font-family: Monospace;
-				font-size: 12px;
-			}
-			
-			body
-			{
-				margin: 0px;
-				overflow: hidden;
-			}
-			
-			select
-			{
-				text-transform: uppercase;
-				font-size: 11px;
-				text-align: center;
-			}
-			
-			hr
-			{
-				border: 0;
-				height: 1px;
-				background-color: #ccc;
-				margin: 20px 0px;
-			}
-			
-			.gui
-			{
-				color: #ccc;
-				width: 280px;
-				background-color: #fff;
-				border-bottom: 1px solid #ddd;
-				padding: 5px 10px;
-				text-align: center;
-				text-transform: uppercase;
-				line-height: 18px;
-				cursor: default;
-			}
-			
-			.button
-			{
-				padding: 2px;
-				cursor: pointer;
-			}
-			
-			.key
-			{
-				padding: 0px 8px;
-				margin-left: 1px;
-				background-color: #eee;
-			}
-			input{
-				position: relative;
-				left: 400px;
-			}
-			output{
-				position: relative;
-				left: 400px;
-			}
-			#drop_zone {
-				position: relative;
-				left: 400px;
-				width: 700px;
-  				border: 2px dashed #bbb;
-  				-moz-border-radius: 5px;
-  				-webkit-border-radius: 5px;
-  				border-radius: 5px;
-  				padding: 25px;
-  				text-align: center;
-  				font: 16pt bold 'Vollkorn';
-  				color: #bbb;
-			}
+						{
+							color: #444;
+							font-family: Monospace;
+							font-size: 12px;
+						}
 
+						body
+						{
+							margin: 0px;
+							overflow: hidden;
+						}
+
+						select
+						{
+							text-transform: uppercase;
+							font-size: 11px;
+							text-align: center;
+						}
+
+						hr
+						{
+							border: 0;
+							height: 1px;
+							background-color: #ccc;
+							margin: 20px 0px;
+						}
+
+						.gui
+						{
+							color: #ccc;
+							width: 280px;
+							background-color: #fff;
+							border-bottom: 1px solid #ddd;
+							padding: 5px 10px;
+							text-align: center;
+							text-transform: uppercase;
+							line-height: 18px;
+							cursor: default;
+						}
+
+						.button
+						{
+							padding: 2px;
+							cursor: pointer;
+						}
+
+						.key
+						{
+							padding: 0px 8px;
+							margin-left: 1px;
+							background-color: #eee;
+						}
+						input{
+							position: relative;
+							left: 400px;
+						}
+						output{
+							position: relative;
+							left: 400px;
+						}
+						#drop_zone {
+							position: relative;
+							left: 400px;
+							width: 700px;
+			  				border: 2px dashed #bbb;
+			  				-moz-border-radius: 5px;
+			  				-webkit-border-radius: 5px;
+			  				border-radius: 5px;
+			  				padding: 25px;
+			  				text-align: center;
+			  				font: 16pt bold 'Vollkorn';
+			  				color: #bbb;
+						}
+						div{
+							/*position:absolute;*/
+							z-index: 10;
+						}
+						#uiContainer{
+							position:relative;
+							z-index: 12;
+						}
 		</style>
 	</head>
 	<script id="vertpt" type="x-shader/x-vertex">
@@ -112,7 +119,7 @@
 						  modelViewMatrix *
 						  vec4(position,1.0);
 		}
-		</script>
+	</script>
 	<script id="fragpt" type="x-shader/x-fragment">
 	// same name and type as VS
 	varying vec3 vNormal;
@@ -149,41 +156,7 @@
 	}
 	</script>
 	<body>
-		<!--<div id="info">
-			<a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - WebGL morph target example
-		</div>-->
-		<div id="drop_zone">Drop files here</div>
-		<output id="list"></output>
-
-		<script>
- 			function handleFileSelect(evt) {
-    			evt.stopPropagation();
-    			evt.preventDefault();
-
-    			var files = evt.dataTransfer.files; // FileList object.
-
-    			// files is a FileList of File objects. List some properties.
-    			var output = [];
-    			for (var i = 0, f; f = files[i]; i++) {
-      				output.push('<li><strong>', f.name, '</strong> (', f.type || 'n/a', ') - ',
-                	f.size, ' bytes, last modified: ',
-                	f.lastModifiedDate.toLocaleDateString(), '</li>');
-    			}
-   				//document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
-   				alert(output.join(''));
-  			}
-
-  			function handleDragOver(evt) {
-    			evt.stopPropagation();
-    			evt.preventDefault();
-  			}
-
-  			// Setup the dnd listeners.
-  			var dropZone = document.getElementById('drop_zone');
-  			dropZone.addEventListener('dragover', handleDragOver, false);
-  			dropZone.addEventListener('drop', handleFileSelect, false);
-		</script>
-		
+		<div id="uiContainer"></div>
 		<script type="text/javascript" src="js/Three.js"></script>
 		<script type="text/javascript" src="js/ThreeCanvas.js"></script>
 		<script type="text/javascript" src="js/ThreeExtras.js"></script>
@@ -194,8 +167,7 @@
 		<script type="text/javascript" src="js/color/colorselector.js"></script>
 		<script type="text/javascript" src="js/color/colorutils.js"></script>
 		<script type="text/javascript" src="js/color/palette.js"></script>
+		<script type="text/javascript" src="js/dat.gui.js"></script>
 		<script type="text/javascript" src="js/main.js"></script>
-		<script type="text/javascript" src="js/swfobject.js"></script>
-		<script type="text/javascript" src="js/downloadify.min.js"></script>
 	</body>
 </html>
