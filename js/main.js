@@ -41,13 +41,13 @@ palette,
 STORAGE = window.localStorage,
 //canvas,
 //flattenCanvas,
-BRUSHES = {
-    'Point': 0,
-    'Line': 1,
-    'Circle': 2,
-    'Polygon': 3,
-    'Rectangle': 4
-},
+BRUSHES = [
+    'Point',
+    'Line',
+    'Circle',
+    'Polygon',
+    'Rectangle'
+],
 isFgColorSelectorVisible = false,
 isBgColorSelectorVisible = false,
 isAboutVisible = false,
@@ -525,39 +525,48 @@ function onDocumentKeyDown(event){
 		case 65: //a
 			controlsProps.selectionType = 0;
 			CONTROLTYPE = 'MOVE';
+			swoosh('MOVE');
 			break;
 		case 83://s
 			controlsProps.selectionType = 1;
 			CONTROLTYPE = 'SCALE';
+			swoosh('SCALE');
 			break;
 		case 68://d
 			controlsProps.selectionType = 2;
 			CONTROLTYPE = 'ROTATE';
+			swoosh('ROTATE');
 			break;
 		case 70://f
 			controlsProps.selectionType = 2;
 			CONTROLTYPE = 'WARP';
+			swoosh('WARP');
 			break;
 		//objects
 		case 49: //1
 			controlsProps.objectType = 0;
 			BRUSHTYPE = 'POINT';
+			swoosh('POINT');
 			break;
 		case 50://2
 			controlsProps.objectType = 1;
 			BRUSHTYPE = 'LINE';
+			swoosh('LINE');
 			break;
 		case 51://3
 			controlsProps.objectType = 2;
 			BRUSHTYPE = 'CIRCLE';
+			swoosh('CIRCLE');
 			break;
 		case 52://4
 			controlsProps.objectType = 3;
 			BRUSHTYPE = 'POLYGON';
+			swoosh('POLYGON');
 			break;
 		case 53: //5
 			controlsProps.objectType = 4;
 			BRUSHTYPE = 'RECTANGLE';
+			swoosh('RECTANGLE');
 			break;
 		}
     }

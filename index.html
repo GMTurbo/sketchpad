@@ -6,7 +6,11 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
-			*
+						@font-face { 
+							font-family: Chunkfive; 
+							src: url(fonts/'Chunkfive.otf'); 
+						} 
+						*
 						{
 							color: #444;
 							font-family: Monospace;
@@ -81,12 +85,33 @@
 			  				color: #bbb;
 						}
 						div{
-							/*position:absolute;*/
 							z-index: 10;
 						}
 						#uiContainer{
 							position:relative;
 							z-index: 12;
+						}
+						div#messageContainer{
+							z-index: 1;
+							position: absolute;
+							top: 5%;
+							left: 5%;
+							width: 0;
+							height: 0;
+							-webkit-transition-property: opacity;
+							-webkit-transition-duration: 0.5s;
+							-webkit-transition-timing-function: ease-in-out;
+						}
+						#POINT, #LINE, #CIRCLE, #RECTANGLE, #POLYGON, #MOVE, #SCALE, #WARP, #ROTATE{
+							position: absolute;
+							top: 5%;
+							left: 5%;
+							text-align:center;
+							font-family: Chunkfive;
+							font-style: italic;
+							font-size: 80px;
+							text-shadow: black 0.1em 0.1em 0.2em;
+							opacity: 0;
 						}
 		</style>
 	</head>
@@ -155,6 +180,62 @@
 	  
 	}
 	</script>
+	<script type="text/javascript">
+	function hidetext(textContainer) {
+		$('#messageContainer').css({"height":"0"});
+		$('#messageContainer').css({"width":"0"});
+		$(textContainer).css({"opacity":"0"});
+		$(textContainer).css({"z-index":"1"});
+	}
+	function animateText(textContainer){
+		$('#messageContainer').css({"height":"25%"});
+		$('#messageContainer').css({"width":"25%"});
+		$(textContainer).css({"opacity":"0.5"});
+		$(textContainer).css({"z-index":"20"});
+	}
+	
+	function swoosh(text){
+		switch(text){
+			case 'POINT':
+			animateText('#POINT');
+			setTimeout("hidetext('#POINT')",200)
+			break;
+			case 'CIRCLE':
+			animateText('#CIRCLE');
+			setTimeout("hidetext('#CIRCLE')",200)
+			break;
+			case 'RECTANGLE':
+			animateText('#RECTANGLE');
+			setTimeout("hidetext('#RECTANGLE')",200)
+			break;
+			case 'POLYGON':
+			animateText('#POLYGON');
+			setTimeout("hidetext('#POLYGON')",200)
+			break;
+			case 'LINE':
+			animateText('#LINE');
+			setTimeout("hidetext('#LINE')",200)
+			break;
+			case 'SCALE':
+			animateText('#SCALE');
+			setTimeout("hidetext('#SCALE')",200)
+			break;
+			case 'MOVE':
+			animateText('#MOVE');
+			setTimeout("hidetext('#MOVE')",200)
+			break;
+			case 'WARP':
+			animateText('#WARP');
+			setTimeout("hidetext('#WARP')",200)
+			break;
+			case 'ROTATE':
+			animateText('#ROTATE');
+			setTimeout("hidetext('#ROTATE')",200)
+			break;
+		}
+	}
+
+	</script>
 	<body>
 		<div id="uiContainer"></div>
 		<script type="text/javascript" src="js/Three.js"></script>
@@ -169,5 +250,17 @@
 		<script type="text/javascript" src="js/color/palette.js"></script>
 		<script type="text/javascript" src="js/dat.gui.js"></script>
 		<script type="text/javascript" src="js/main.js"></script>
+		
+		<div id="messageContainer">
+			<div id="POINT">POINT</div>
+			<div id="LINE">LINE</div>
+			<div id="RECTANGLE">RECTANGLE</div>
+			<div id="CIRCLE">CIRCLE</div>
+			<div id="POLYGON">POLYGON</div>
+			<div id="MOVE">MOVE</div>
+			<div id="SCALE">SCALE</div>
+			<div id="ROTATE">ROTATE</div>
+			<div id="WARP">WARP</div>
+		</div>
 	</body>
 </html>

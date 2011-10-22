@@ -50,39 +50,39 @@ Menu.prototype =
 		
 		this.selector = document.createElement("select");
 
-		for (i = 0; i < BRUSHES.length; i++)
-		{
-			option = document.createElement("option");
-			option.id = i;
-			option.innerHTML = BRUSHES[i].toUpperCase();
-			this.selector.appendChild(option);
-		}
+		 for (i = 0; i < BRUSHES.length; i++)
+		 {
+			 option = document.createElement("option");
+			 option.id = i;
+			 option.innerHTML = BRUSHES[i].toUpperCase();
+			 this.selector.appendChild(option);
+		 }
 
 		this.container.appendChild(this.selector);
 
-		space = document.createTextNode(" ");
-		this.container.appendChild(space);
+		 space = document.createTextNode(" ");
+		 this.container.appendChild(space);
 		
-		this.save = document.createElement("span"); //getElementById('save');
-		this.save.className = 'button';
-		this.save.innerHTML = 'Save';
-		this.container.appendChild(this.save);
+		 this.save = document.createElement("span"); //getElementById('save');
+		 this.save.className = 'button';
+		 this.save.innerHTML = 'Save';
+		 this.container.appendChild(this.save);
 		
-		space = document.createTextNode(" ");
-		this.container.appendChild(space);
+		 space = document.createTextNode(" ");
+		 this.container.appendChild(space);
 		
-		this.clear = document.createElement("Clear");
-		this.clear.className = 'button';
-		this.clear.innerHTML = 'Clear';
-		this.container.appendChild(this.clear);
+		 this.clear = document.createElement("Clear");
+		 this.clear.className = 'button';
+		 this.clear.innerHTML = 'Clear';
+		 this.container.appendChild(this.clear);
 
-		separator = document.createTextNode(" | ");
-		this.container.appendChild(separator);
+		 separator = document.createTextNode(" | ");
+		 this.container.appendChild(separator);
 
-		this.about = document.createElement("About");
-		this.about.className = 'button';
-		this.about.innerHTML = 'About';
-		this.container.appendChild(this.about);
+		 this.about = document.createElement("About");
+		 this.about.className = 'button';
+		 this.about.innerHTML = 'About';
+		 this.container.appendChild(this.about);
 	},
 	
 	setForegroundColor: function( color )
