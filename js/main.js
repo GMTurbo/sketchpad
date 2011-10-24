@@ -1,11 +1,8 @@
 if (!Detector.webgl) Detector.addGetWebGLMessage();
 
 var controlsProps = {
-    R: 0,
-    G: 0,
-    B: 0,
     objectType: 0,
-	selectionType: 0
+    selectionType: 0
 };
 
 var container,
@@ -29,7 +26,7 @@ INTERSECTED,
 SELECTED,
 DRAG,
 BRUSHTYPE = 'LINE',
-CONTROLTYPE ='MOVE',
+CONTROLTYPE = 'MOVE',
 radius = 50;
 
 var foregroundColorSelector,
@@ -42,11 +39,17 @@ STORAGE = window.localStorage,
 //canvas,
 //flattenCanvas,
 BRUSHES = [
-    'Point',
-    'Line',
-    'Circle',
-    'Polygon',
-    'Rectangle'
+'Point',
+'Line',
+'Circle',
+'Polygon',
+'Rectangle'
+],
+CONTROLS = [
+'Move',
+'Scale',
+'Warp',
+'Rotate'
 ],
 isFgColorSelectorVisible = false,
 isBgColorSelectorVisible = false,
@@ -55,11 +58,11 @@ isMenuMouseOver = false,
 shiftKeyIsDown = false,
 altKeyIsDown = false;
 //var mouseX = 0, mouseY = 0;
-var mesh;
+var mesh,
+initSpeed = 0;
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 //var totalLength = Math.sqrt(Math.pow(windowHalfX*2,2) + Math.pow(windowHalfY*2,2)); // used for the scaling function
-
 //document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 var lightS = {
     type: 'v3',
@@ -78,10 +81,15 @@ init();
 animate();
 
 function init() {
-    if (window.File && window.FileReader && window.FileList && window.Blob) {
+    if (isDnDSupported()) {
         // Great success! All the File APIs are supported.
         } else {
         alert('The File APIs are not fully supported in this browser.');
+    }
+	if (isLocalStorageSupported()) {
+        // Great success! We can save now.
+        } else {
+        alert('Local Storage is not supported in this browser. :( ');
     }
     setupScene();
     showGUI();
@@ -124,12 +132,12 @@ function showGUI(game) {
             break;
         }
     }).listen();
-	
-	gui.add(controlsProps, 'selectionType').options({
-		'Move': 0,
+
+    gui.add(controlsProps, 'selectionType').options({
+        'Move': 0,
         'Scale': 1,
         'Warp': 2,
-		'Rotate': 3
+        'Rotate': 3
     }).onChange(function(newValue) {
 
         switch (newValue) {
@@ -150,36 +158,37 @@ function showGUI(game) {
             break;
         }
     }).listen();
-	
-	
-	gui.add(this, 'onMenuSave').name('Save'); // Specify a custom name.
-	gui.add(this, 'onMenuLoad').name('Load'); // Specify a custom name.
-	gui.add(this, 'onMenuClear').name('Clear'); // Specify a custom name.
-	
-	gui.autoListen = true;
+
+
+    gui.add(this, 'onMenuSave').name('Save');
+    // Specify a custom name.
+    gui.add(this, 'onMenuLoad').name('Load');
+    // Specify a custom name.
+    gui.add(this, 'onMenuClear').name('Clear');
+    // Specify a custom name.
+    gui.autoListen = true;
     gui.close();
 }
-function setupMenu()
- {
-    palette = new Palette();
-    container.appendChild(renderer.domElement);
-    foregroundColorSelector = new ColorSelector(palette);
-    foregroundColorSelector.addEventListener('change', onForegroundColorSelectorChange, false);
-    container.appendChild(foregroundColorSelector.container);
+function setupMenu(){
+		palette = new Palette();
+	    container.appendChild(renderer.domElement);
+	    foregroundColorSelector = new ColorSelector(palette);
+	    foregroundColorSelector.addEventListener('change', onForegroundColorSelectorChange, false);
+	    container.appendChild(foregroundColorSelector.container);
 
-    backgroundColorSelector = new ColorSelector(palette);
-    backgroundColorSelector.addEventListener('change', onBackgroundColorSelectorChange, false);
-    container.appendChild(backgroundColorSelector.container);
-    menu = new Menu();
-    menu.foregroundColor.addEventListener('click', onMenuForegroundColor, false);
-    menu.backgroundColor.addEventListener('click', onMenuBackgroundColor, false);
-    menu.save.addEventListener('click', onMenuSave, false);
-    menu.clear.addEventListener('click', onMenuClear, false);
-    menu.container.addEventListener('mouseover', onMenuMouseOver, false);
-    menu.container.addEventListener('mouseout', onMenuMouseOut, false);
-    container.appendChild(menu.container);
+	    //backgroundColorSelector = new ColorSelector(palette);
+	    //backgroundColorSelector.addEventListener('change', onBackgroundColorSelectorChange, false);
+	    //container.appendChild(backgroundColorSelector.container);
+	    menu = new Menu();
+	    menu.foregroundColor.addEventListener('click', onMenuForegroundColor, false);
+	   // menu.backgroundColor.addEventListener('click', onMenuBackgroundColor, false);
+	    menu.save.addEventListener('click', onMenuSave, false);
+		menu.load.addEventListener('click', onMenuLoad, false)
+	    menu.clear.addEventListener('click', onMenuClear, false);
+	    menu.container.addEventListener('mouseover', onMenuMouseOver, false);
+	    menu.container.addEventListener('mouseout', onMenuMouseOut, false);
+	    container.appendChild(menu.container);
 }
-
 function setupScene() {
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -189,18 +198,14 @@ function setupScene() {
     //camera = new THREE.OrthographicCamera(0, aspect_ratio * 1000, 1000, 0, 10000, -10000);
     camera.position.set(0, 0, 800);
     //camera.position.z = 600;
-
     scene = new THREE.Scene();
     //scene.fog = new THREE.Fog(0x000000, 1, 1500);
-
     //var light = new THREE.PointLight(0xff2200);
     //light.position.set(100, 100, 100);
     //scene.add(light);
     //var light = new THREE.AmbientLight(0x333333);
     //scene.add(light);
-
-    var geometry = new THREE.CubeGeometry(100, 100, 1);
-
+    //var geometry = new THREE.CubeGeometry(100, 100, 1);
     //var material = new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff, shading: THREE.FlatShading } );
     // construct 8 blend shapes
     // for ( var i = 0; i < geometry.vertices.length; i ++ ) {
@@ -228,18 +233,20 @@ function setupScene() {
     //parent.position.y = 50;
     //objects.push(parent);
     scene.add(parent);
-    mesh = new THREE.Mesh(geometry, getMaterial(Math.random() * 0xffffff));
-    mesh.overdraw = true;
-	mesh.color = mesh.materials[0].color.getHex();
-    objects.push(mesh);
-    scene.add(mesh);
-    geometry = new THREE.SphereGeometry(radius, 20, 20);
-    mesh = new THREE.Mesh(geometry, getMaterial(Math.random() * 0xffffff));
-    mesh.overdraw = true;
+    //mesh = new THREE.Mesh(geometry, getMaterial(Math.random() * 0xffffff));
+    //mesh.overdraw = true;
+    //mesh.color = mesh.materials[0].color.getHex();
+    //mesh.ThreeType = "cube";
+    //objects.push(mesh);
+    //scene.add(mesh);
+    //geometry = new THREE.SphereGeometry(radius, 20, 20);
+    //mesh = new THREE.Mesh(geometry, getMaterial(Math.random() * 0xffffff));
+    //mesh.overdraw = true;
     //mesh.position.x = 200;
-	mesh.color = mesh.materials[0].color.getHex();
-    objects.push(mesh);
-    scene.add(mesh);
+    //mesh.color = mesh.materials[0].color.getHex();
+    //mesh.ThreeType = "sphere";
+    //objects.push(mesh);
+    //scene.add(mesh);
     plane = new THREE.Mesh(new THREE.PlaneGeometry(window.innerWidth, window.innerHeight, 8, 8), new THREE.MeshBasicMaterial({
         color: 0x000000,
         opacity: 0.50,
@@ -265,13 +272,27 @@ function setupScene() {
     renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
     renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
     renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
-	document.addEventListener( 'keydown', onDocumentKeyDown, false );
+    document.addEventListener('keydown', onDocumentKeyDown, false);
 }
-
-function getMaterial(color){
-	return new THREE.MeshBasicMaterial({
+function isLocalStorageSupported() {
+    try {
+        var supported = false;
+        if (window['localStorage'] !== null)
+        {
+            supported = true;
+        }
+        return supported;
+    } catch(e) {
+        return false;
+    }
+}
+function isDnDSupported(){
+	return window.File && window.FileReader && window.FileList && window.Blob;
+}
+function getMaterial(color) {
+    return new THREE.MeshBasicMaterial({
         color: color,
-		shading: THREE.FlatShading
+        shading: THREE.FlatShading
     });
 }
 
@@ -286,42 +307,138 @@ function onMenuForegroundColor()
     isFgColorSelectorVisible = true;
 }
 
-function onMenuBackgroundColor(){}
+function onMenuBackgroundColor() {}
 
 // COLOR SELECTORS
 function onForegroundColorSelectorChange(event)
- {  
-	if(SELECTED){
-		COLOR = foregroundColorSelector.getColor();
-		COLOR = RGB2HTML(COLOR[0],COLOR[1],COLOR[2]);
-		SELECTED.materials[0] = getMaterial(COLOR)
-		setObjectData(SELECTED,'color', COLOR);
-	}
+ {
+    if (SELECTED) {
+        COLOR = foregroundColorSelector.getColor();
+        COLOR = RGB2HTML(COLOR[0], COLOR[1], COLOR[2]);
+        SELECTED.materials[0] = getMaterial(COLOR)
+        setObjectData(SELECTED, 'color', COLOR);
+    }
 }
 
-function onBackgroundColorSelectorChange(event){}
-function onMenuSave(){}
-function onMenuLoad(){}
+function onBackgroundColorSelectorChange(event) {}
+function onMenuSave() {
+    //save();
+	saveLocal();
+}
+function onMenuLoad() {
+    //load();
+	loadLocal();
+}
+function save() {
+    var name = showPrompt(true);
+    if (name === null) {
+        return alert("invalid file name");
+    } else {
+        var saveData = prepForJSON(objects);
+        var stringify = JSON.stringify(saveData);
+        return $.cookie(name, stringify, {
+            expires: 2
+        });
+    }
+}
+function saveLocal(){
+	//localStorage.setItem('firstName', 'Bugs');
+    var name = showPrompt(true);
+    if (name === null) {
+        return alert("invalid file name");
+    } else {
+        var saveData = prepForJSON(objects);
+        var stringify = JSON.stringify(saveData);
+        return localStorage.setItem(name, stringify);
+    }
+}
+function load() {
+    var name = showPrompt(false);
+    if (name === null || $.cookie(name) === null) {
+        return alert("invalid file name");
+    } else {
+        onMenuClear();
+        loadedObs = JSON.parse($.cookie(name));
+        for (i = 0; i < loadedObs.length; i++) {
+            loadObject(loadedObs[i]);
+        }
+    }
+}
+function loadLocal(){
+	var name = showPrompt(false);
+    if (name === null || localStorage.getItem(name) === null) {
+        return alert("invalid file name");
+    } else {
+        onMenuClear();
+        loadedObs = JSON.parse(localStorage.getItem(name));
+        for (i = 0; i < loadedObs.length; i++) {
+            loadObject(loadedObs[i]);
+        }
+    }
+}
+function showPrompt(save) {
+    var name;
+    if (save) {
+        name = prompt("Name your save file:");
+    } else {
+        name = prompt("Load filename:");
+    }
+    if (name !== null && name !== "") {
+        return name;
+    } else {
+        return null;
+    }
+}
+
+function prepForJSON(objectList) {
+    ret = [];
+    for (var index in objectList) {
+        object = objectList[index];
+        ret.push({
+            geometry: object.ThreeType,
+            vertices: object.vertices,
+            position: object.position,
+            rotation: object.rotation,
+            scale: object.scale,
+            color: object.color
+        });
+    }
+    return ret;
+}
+
+function loadObject(object) {
+    if (object === null || object === void 0) {} else {
+        switch (object.geometry) {
+        case "cube":
+            return makeRectangle(object.vertices, object.color, object.position, object.scale, object.rotation);
+        case "sphere":
+            return makeSphere(object.vertices, object.color, object.position, object.scale, object.rotation);
+        case "line":
+            return makeLine(object.vertices, object.color, object.position, object.scale, object.rotation);
+        case "point":
+            return makeLine(object.vertices, object.color, object.position, object.scale, object.rotation);
+        case "poly":
+            return makePoly(object.vertices, object.color, object.position, object.scale, object.rotation)
+        }
+    }
+}
+
 function onMenuClear()
  {
     //scene.objects=[];
-	INTERSECTED = null;
-	SELECTED = null;
+    INTERSECTED = null;
+    SELECTED = null;
     objects = [];
     scene = new THREE.Scene();
     //scene.fog = new THREE.Fog(0x000000, 1, 15000);
-
-
     //var light = new THREE.PointLight(0xff2200);
     //light.position.set(100, 100, 100);
     //scene.add(light);
-
-   // var light = new THREE.AmbientLight(0x333333);
-   // scene.add(light);
-
+    // var light = new THREE.AmbientLight(0x333333);
+    // scene.add(light);
     parent = new THREE.Object3D();
     //parent.position.y = 50;
-    objects.push(parent);
+    //objects.push(parent);
     scene.add(parent);
 
     plane = new THREE.Mesh(new THREE.PlaneGeometry(window.innerWidth, window.innerHeight, 8, 8), new THREE.MeshBasicMaterial({
@@ -340,18 +457,15 @@ function onMenuMouseOver()
  {
     isMenuMouseOver = true;
 }
-
 function onMenuMouseOut()
  {
     isMenuMouseOver = false;
 }
-
 function onDocumentDragEnter(event)
  {
     event.stopPropagation();
     event.preventDefault();
 }
-
 function onDocumentDragOver(event)
  {
     event.stopPropagation();
@@ -359,7 +473,7 @@ function onDocumentDragOver(event)
 }
 function cleanPopUps()
  {
-	gui.close();
+    gui.close();
     if (isFgColorSelectorVisible)
     {
         foregroundColorSelector.hide();
@@ -372,48 +486,48 @@ function cleanPopUps()
         isBgColorSelectorVisible = false;
     }
 }
-
 function animate() {
-
     requestAnimationFrame(animate);
+    //if(SELECTED && initSpeed > 0){
+    //	initSpeed = getnewSpeed(initSpeed-0.1);
+    //	SELECTED.rotation.z += initSpeed / (2*Math.PI);
+    //}
     render();
-
 }
-
+function getnewSpeed(x) {
+    return - 2 * x + 10;
+}
 function render() {
     renderer.render(scene, camera);
 }
 
-function setObjectData(object, property, value){
-	var index = objects.indexOf(object);
-	if(index >= 0){
-		switch(property){
-			case 'color':
-			objects[index].materials[0] = new THREE.MeshBasicMaterial({
-		        color: value
-		    });
-			objects[index].color = objects[index].materials[0].color.getHex();
-			return true;
-			break;
-			case 'scale':
-			//objects[object].materials[0] = new THREE.MeshBasicMaterial({
-		    //    color: COLOR
-		    //});
-			return true;
-			break;
-			case 'rotation':
-			return true;
-			break;
-		}
-	}
-	return false;
+function setObjectData(object, property, value) {
+    var index = objects.indexOf(object);
+    if (index >= 0) {
+        switch (property) {
+        case 'color':
+            objects[index].materials[0] = new THREE.MeshBasicMaterial({
+                color: value
+            });
+            objects[index].color = objects[index].materials[0].color.getHex();
+            return true;
+            break;
+        case 'scale':
+            return true;
+            break;
+        case 'rotation':
+            return true;
+            break;
+        }
+    }
+    return false;
 }
-function getObject(object){
-	var index = objects.indexOf(object);
-	if(index>=0){
-		return objects[index];
-	}
-	return null;
+function getObject(object) {
+    var index = objects.indexOf(object);
+    if (index >= 0) {
+        return objects[index];
+    }
+    return null;
 }
 var DRAGGING = false;
 function onDocumentMouseDown(event) {
@@ -431,9 +545,10 @@ function onDocumentMouseDown(event) {
     if (intersects.length > 0) {
 
         SELECTED = intersects[0].object;
-		SELECTED.currentColor = SELECTED.materials[0].color.getHex();
+        SELECTED.currentColor = SELECTED.materials[0].color.getHex();
         SELECTED.materials[0] = new THREE.MeshBasicMaterial({
-            color: 0xf5894e //RED
+            color: 0xf5894e
+            //RED
         });
         var intersects = ray.intersectObject(plane);
         offset.copy(intersects[0].point).subSelf(plane.position);
@@ -441,9 +556,9 @@ function onDocumentMouseDown(event) {
         container.style.cursor = 'move';
 
     } else {
-		if (SELECTED) {
-			SELECTED.materials[0].color.getHex(getObject(SELECTED).color)
-		}
+        if (SELECTED) {
+            SELECTED.materials[0].color.getHex(getObject(SELECTED).color)
+        }
         SELECTED = null;
         if (event.shiftKey) {
             var intersects = ray.intersectScene(scene);
@@ -469,7 +584,7 @@ function onDocumentMouseMove(event) {
     var ray = new THREE.Ray(camera.position, vector.subSelf(camera.position).normalize());
 
     if (SELECTED && DRAGGING) {
-		action(ray);
+        action(ray);
         return;
     }
 
@@ -494,8 +609,8 @@ function onDocumentMouseMove(event) {
     } else {
 
         if (INTERSECTED) {
-			INTERSECTED.materials[0].color.setHex(getObject(INTERSECTED).color);
-		}
+            INTERSECTED.materials[0].color.setHex(getObject(INTERSECTED).color);
+        }
 
         INTERSECTED = null;
 
@@ -519,125 +634,120 @@ function onDocumentMouseUp(event) {
     }
     container.style.cursor = 'auto';
 }
-function onDocumentKeyDown(event){
-    switch (event.keyCode){
-		//actions
-		case 65: //a
-			controlsProps.selectionType = 0;
-			CONTROLTYPE = 'MOVE';
-			swoosh('MOVE');
-			break;
-		case 83://s
-			controlsProps.selectionType = 1;
-			CONTROLTYPE = 'SCALE';
-			swoosh('SCALE');
-			break;
-		case 68://d
-			controlsProps.selectionType = 2;
-			CONTROLTYPE = 'ROTATE';
-			swoosh('ROTATE');
-			break;
-		case 70://f
-			controlsProps.selectionType = 2;
-			CONTROLTYPE = 'WARP';
-			swoosh('WARP');
-			break;
-		//objects
-		case 49: //1
-			controlsProps.objectType = 0;
-			BRUSHTYPE = 'POINT';
-			swoosh('POINT');
-			break;
-		case 50://2
-			controlsProps.objectType = 1;
-			BRUSHTYPE = 'LINE';
-			swoosh('LINE');
-			break;
-		case 51://3
-			controlsProps.objectType = 2;
-			BRUSHTYPE = 'CIRCLE';
-			swoosh('CIRCLE');
-			break;
-		case 52://4
-			controlsProps.objectType = 3;
-			BRUSHTYPE = 'POLYGON';
-			swoosh('POLYGON');
-			break;
-		case 53: //5
-			controlsProps.objectType = 4;
-			BRUSHTYPE = 'RECTANGLE';
-			swoosh('RECTANGLE');
-			break;
-		}
+function onDocumentKeyDown(event) {
+    switch (event.keyCode) {
+        //actions
+    case 65:
+        //a
+        controlsProps.selectionType = 0;
+        CONTROLTYPE = 'MOVE';
+        swoosh('MOVE');
+        break;
+    case 83:
+        //s
+        controlsProps.selectionType = 1;
+        CONTROLTYPE = 'SCALE';
+        swoosh('SCALE');
+        break;
+    case 68:
+        //d
+        controlsProps.selectionType = 2;
+        CONTROLTYPE = 'ROTATE';
+        swoosh('ROTATE');
+        break;
+    case 70:
+        //f
+        controlsProps.selectionType = 2;
+        CONTROLTYPE = 'WARP';
+        swoosh('WARP');
+        break;
+        //objects
+    case 49:
+        //1
+        controlsProps.objectType = 0;
+        BRUSHTYPE = 'POINT';
+        swoosh('POINT');
+        break;
+    case 50:
+        //2
+        controlsProps.objectType = 1;
+        BRUSHTYPE = 'LINE';
+        swoosh('LINE');
+        break;
+    case 51:
+        //3
+        controlsProps.objectType = 2;
+        BRUSHTYPE = 'CIRCLE';
+        swoosh('CIRCLE');
+        break;
+    case 52:
+        //4
+        controlsProps.objectType = 3;
+        BRUSHTYPE = 'POLYGON';
+        swoosh('POLYGON');
+        break;
+    case 53:
+        //5
+        controlsProps.objectType = 4;
+        BRUSHTYPE = 'RECTANGLE';
+        swoosh('RECTANGLE');
+        break;
     }
-function action(ray){
-	switch(CONTROLTYPE){
-		case 'MOVE':
-			DRAG = SELECTED;
-        	var intersects = ray.intersectObject(plane);
-        	DRAG.position.copy(intersects[0].point.subSelf(offset));
-		break;
-		case 'ROTATE':
-			DRAG = SELECTED;
-			direction = new THREE.Vector3(mouse.x - DRAG.position.x, 0, -mouse.y - DRAG.position.y);
-    		DRAG.rotation.z = Math.atan(direction.x/direction.z);
-		break;
-		case 'SCALE':
-			DRAG = SELECTED;
-			var intersects = ray.intersectObject(plane);
-			pnt = intersects[0].point.subSelf(offset);
-			direction = new THREE.Vector3(pnt.x - DRAG.position.x, 0, pnt.y - DRAG.position.y);
-			if(direction.length() > 0.1){
-    			DRAG.scale = new THREE.Vector3(direction.length()/radius,direction.length()/radius,direction.length()/radius);
-			}
-		break;
-		case 'WARP':
-		break;
-	}
+}
+function action(ray) {
+    switch (CONTROLTYPE) {
+    case 'MOVE':
+        DRAG = SELECTED;
+        var intersects = ray.intersectObject(plane);
+        DRAG.position.copy(intersects[0].point.subSelf(offset));
+        break;
+    case 'ROTATE':
+        DRAG = SELECTED;
+        direction = new THREE.Vector3(mouse.x - DRAG.position.x, 0, -mouse.y - DRAG.position.y);
+        initSpeed = direction.length();
+        DRAG.rotation.z = Math.atan(direction.x / direction.z);
+        break;
+    case 'SCALE':
+        DRAG = SELECTED;
+        var intersects = ray.intersectObject(plane);
+        pnt = intersects[0].point.subSelf(offset);
+        direction = new THREE.Vector3(pnt.x - DRAG.position.x, 0, pnt.y - DRAG.position.y);
+        if (direction.length() > 0.1) {
+            DRAG.scale = new THREE.Vector3(direction.length() / radius, direction.length() / radius, direction.length() / radius);
+        }
+        break;
+    case 'WARP':
+        break;
+    }
 }
 
 function createObject(ray) {
     switch (BRUSHTYPE) {
     case 'LINE':
         if (clicks.length > 1) {
-            geometry = new THREE.Geometry();
-            for (var i in clicks) {
-                geometry.vertices.push(new THREE.Vertex(clicks[i]));
-            }
-            addLine(geometry, Math.random() * 0xffffff);
+            makeLine(clicks, randColor());
         }
         break;
     case 'POINT':
         if (clicks.length === 1) {
-            addPoint(clicks, Math.random() * 0xffffff, 0, 0);
+            makePoint(clicks, randColor());
         }
         break;
     case 'CIRCLE':
-		if (clicks.length === 1) {
-			addSphere(ray);
-		}
+        if (clicks.length === 1) {
+            var intersects = ray.intersectObject(plane);
+            center = intersects[0].point;
+            makeSphere(clicks, randColor(), center);
+        }
         break;
     case 'POLYGON':
         if (clicks.length > 3) {
-            var californiaShape = new THREE.Shape(clicks);
-            var california3d = new THREE.ExtrudeGeometry(californiaShape, {
-                amount: 5
-            });
-            //var californiaPoints = californiaShape.createPointsGeometry();
-            addMesh(california3d, Math.random() * 0xffffff, 0, 0);
+            makePoly(clicks, randColor(), new THREE.Vector3(0, 0, 0));
         }
         break;
     case 'RECTANGLE':
         if (clicks.length > 1 && clicks.length < 5) {
-            var rec = GetRectangle(clicks);
-            geometry = new THREE.CubeGeometry(rec.xlength, rec.ylength, 5);
-            mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-                color: Math.random() * 0xffffff
-            }));
-            mesh.position = new THREE.Vector3(rec.x, rec.y, 0);
-			mesh.color = mesh.materials[0].color.getHex();
-            objects.push(mesh);
-            scene.add(mesh);
+            makeRectangle(clicks, randColor());
             //clicks[1] = new THREE.Vector3(clicks[0].x + center.xlength, clicks[0].y, clicks[0].z);
             //clicks[2] = new THREE.Vector3(clicks[1].x, clicks[1].y-center.ylength, clicks[1].z);
             //clicks[3] = new THREE.Vector3(clicks[2].x - center.xlength, clicks[2].y, clicks[2].z);
@@ -649,6 +759,32 @@ function createObject(ray) {
         }
         break;
     }
+}
+function randColor() {
+    return Math.random() * 0xffffff;
+}
+function makeLine(points, color, position, scale, rotation) {
+    geometry = new THREE.Geometry();
+    for (var i in points) {
+        geometry.vertices.push(new THREE.Vertex(points[i]));
+    }
+    addLine(geometry, color, position, scale, rotation);
+}
+function makePoly(points, color, position, scale, rotation) {
+    var shape = new THREE.Shape(points);
+    var extrude3d = new THREE.ExtrudeGeometry(shape, {
+        amount: 5
+    });
+    addMesh(extrude3d, color, position, scale, rotation);
+}
+function makeSphere(points, color, position, scale, rotation) {
+    addSphere(points, color, position, scale, rotation)
+}
+function makeRectangle(points, color, position, scale, rotation) {
+    addRectangle(points, color, position, scale, rotation);
+}
+function makePoint(point, color, position, scale, rotation) {
+    addPoint(clicks, color, position, scale, rotation);
 }
 
 function addGeometry(geometry, points, spacedPoints, color, x, y, z, rx, ry, rz, s) {
@@ -722,54 +858,113 @@ function addGeometry(geometry, points, spacedPoints, color, x, y, z, rx, ry, rz,
 
 }
 
-function addSphere(ray){
-	var intersects = ray.intersectObject(plane);
-	center = intersects[0].point;
-	geometry = new THREE.SphereGeometry(radius, 20, 20);
-    mesh = new THREE.Mesh(geometry, getMaterial(Math.random() * 0xffffff));
+function addSphere(points, color, position, scale, rotation) {
+    geometry = new THREE.SphereGeometry(radius, 20, 20);
+    mesh = new THREE.Mesh(geometry, getMaterial(color));
     mesh.overdraw = true;
-    mesh.position = center;
-	mesh.color = mesh.materials[0].color.getHex();
+    mesh.color = mesh.materials[0].color.getHex();
+    if (typeof position !== "undefined") {
+        mesh.position = new THREE.Vector3(position.x, position.y, position.z);
+    }
+    if (typeof scale !== "undefined") {
+        mesh.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
+    }
+    if (typeof rotation !== "undefined") {
+        mesh.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
+    }
+    mesh.ThreeType = "sphere";
+    mesh.vertices = clicks;
     objects.push(mesh);
     scene.add(mesh);
 }
 
-function addLine(points, color) {
+function addLine(points, color, position, scale, rotation) {
     // solid line
-	var line = new THREE.Line(points, new THREE.LineBasicMaterial({
+    var line = new THREE.Line(points, new THREE.LineBasicMaterial({
         color: color,
         linewidth: 2
     }));
     line.updateMatrix();
-    //line.position.set( 0,0,0 );
-    //line.data = "unfilled";
-	line.color = mesh.materials[0].color.getHex();
+    line.color = line.materials[0].color.getHex();
+    if (typeof position !== "undefined") {
+        line.position = new THREE.Vector3(position.x, position.y, position.z);
+    }
+    if (typeof scale !== "undefined") {
+        line.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
+    }
+    if (typeof rotation !== "undefined") {
+        line.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
+    }
+    line.ThreeType = "line";
+    line.vertices = clicks;
     objects.push(line);
     parent.add(line);
 }
 
-function addMesh(geometry, color, centerx, centery) {
-    var mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-        color: color
-    }));
-    mesh.position.set(centerx, centery, 0);
-	mesh.color = mesh.materials[0].color.getHex();
+function addMesh(geometry, color, position, scale, rotation) {
+    var mesh = new THREE.Mesh(geometry, getMaterial(color));
+    mesh.color = mesh.materials[0].color.getHex();
+    if (typeof position !== "undefined") {
+        mesh.position = new THREE.Vector3(position.x, position.y, position.z);
+    }
+    if (typeof scale !== "undefined") {
+        mesh.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
+    }
+    if (typeof rotation !== "undefined") {
+        mesh.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
+    }
+    mesh.ThreeType = "poly";
+    mesh.vertices = clicks;
     objects.push(mesh);
     parent.add(mesh);
 }
 
-function addPoint(point, color, centerx, centery) {
+function addPoint(point, color, position, scale, rotation) {
     var geometry = new THREE.SphereGeometry(5, 5, 5);
-    var p = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-        color: color
-    }));
+    var p = new THREE.Mesh(geometry, getMaterial(color));
     p.position = point[0];
+    if (typeof position !== "undefined") {
+        p.position = new THREE.Vector3(position.x, position.y, position.z);
+    }
+    if (typeof scale !== "undefined") {
+        p.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
+    }
+    if (typeof rotation !== "undefined") {
+        p.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
+    }
     p.data = "unassigned";
-	p.color = mesh.materials[0].color.getHex();
+    p.color = p.materials[0].color.getHex();
     //var particles = new THREE.ParticleSystem( point, new THREE.ParticleBasicMaterial( { color: color, size: 2, opacity: 1 } ) );
     //particles.position.set( centerx, centery, 0 );
+    p.ThreeType = "point";
+    p.vertices = clicks;
     objects.push(p);
     parent.add(p);
+}
+
+function addRectangle(points, color, position, scale, rotation) {
+    var rec = GetRectangle(points);
+
+    geometry = new THREE.CubeGeometry(rec.xlength, rec.ylength, 5);
+
+    mesh = new THREE.Mesh(geometry, getMaterial(color));
+
+    mesh.position = new THREE.Vector3(rec.x, rec.y, 0);
+
+    if (typeof position !== "undefined") {
+        mesh.position = new THREE.Vector3(position.x, position.y, position.z);
+    }
+    if (typeof scale !== "undefined") {
+        mesh.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
+    }
+    if (typeof rotation !== "undefined") {
+        mesh.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
+    }
+    mesh.color = mesh.materials[0].color.getHex();
+    mesh.ThreeType = "rectangle";
+    mesh.vertices = clicks;
+    objects.push(mesh);
+    scene.add(mesh);
 }
 
 function GetCenter(points) {
