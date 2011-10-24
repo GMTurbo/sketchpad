@@ -102,7 +102,9 @@
 							-webkit-transition-duration: 0.5s;
 							-webkit-transition-timing-function: ease-in-out;
 						}
-						#POINT, #LINE, #CIRCLE, #RECTANGLE, #POLYGON, #MOVE, #SCALE, #WARP, #ROTATE{
+						/*swoosh text*/
+						#POINT, #LINE, #CIRCLE, #RECTANGLE, #POLYGON, #MOVE, 
+						#SCALE, #WARP, #ROTATE, #CUT, #COPY, #PASTE, #REDO, #UNDO{
 							position: absolute;
 							top: 5%;
 							left: 5%;
@@ -232,6 +234,26 @@
 			animateText('#ROTATE');
 			setTimeout("hidetext('#ROTATE')",200)
 			break;
+			case 'CUT':
+			animateText('#CUT');
+			setTimeout("hidetext('#CUT')",200)
+			break;
+			case 'COPY':
+			animateText('#COPY');
+			setTimeout("hidetext('#COPY')",200)
+			break;
+			case 'PASTE':
+			animateText('#PASTE');
+			setTimeout("hidetext('#PASTE')",200)
+			break;
+			case 'UNDO':
+			animateText('#UNDO');
+			setTimeout("hidetext('#UNDO')",200)
+			break;
+			case 'REDO':
+			animateText('#REDO');
+			setTimeout("hidetext('#REDO')",200)
+			break;
 		}
 	}
 
@@ -262,6 +284,11 @@
 			<div id="SCALE">SCALE</div>
 			<div id="ROTATE">ROTATE</div>
 			<div id="WARP">WARP</div>
+			<div id="CUT">CUT</div>
+			<div id="COPY">COPY</div>
+			<div id="PASTE">PASTE</div>
+			<div id="UNDO">UNDO</div>
+			<div id="REDO">REDO</div>
 		</div>
 	</body>
 </html>

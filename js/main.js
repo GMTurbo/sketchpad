@@ -14,11 +14,26 @@ renderer,
 projector;
 
 var objects = [],
-plane,
 geometry,
 plane,
 clicks = [],
-parent;
+parent,
+tmpRec;
+
+var originalPos,
+originalRot,
+originalScl;
+
+//UNDO / REDO Queues
+var commandQueue = [],
+undoQueue = [],
+ACTION_TYPE = {
+    add: "ADD",
+    delete: "DELETE",
+    rotate: "ROTATE",
+    scale: "SCALE",
+    move: "MOVE"
+};
 
 var mouse = new THREE.Vector2(),
 offset = new THREE.Vector3(),
@@ -86,7 +101,7 @@ function init() {
         } else {
         alert('The File APIs are not fully supported in this browser.');
     }
-	if (isLocalStorageSupported()) {
+    if (isLocalStorageSupported()) {
         // Great success! We can save now.
         } else {
         alert('Local Storage is not supported in this browser. :( ');
@@ -97,6 +112,7 @@ function init() {
     setupMenu();
 }
 var gui;
+
 function showGUI(game) {
     gui = new DAT.GUI();
     DAT.GUI.autoPlace = true;
@@ -169,25 +185,25 @@ function showGUI(game) {
     gui.autoListen = true;
     gui.close();
 }
-function setupMenu(){
-		palette = new Palette();
-	    container.appendChild(renderer.domElement);
-	    foregroundColorSelector = new ColorSelector(palette);
-	    foregroundColorSelector.addEventListener('change', onForegroundColorSelectorChange, false);
-	    container.appendChild(foregroundColorSelector.container);
+function setupMenu() {
+    palette = new Palette();
+    container.appendChild(renderer.domElement);
+    foregroundColorSelector = new ColorSelector(palette);
+    foregroundColorSelector.addEventListener('change', onForegroundColorSelectorChange, false);
+    container.appendChild(foregroundColorSelector.container);
 
-	    //backgroundColorSelector = new ColorSelector(palette);
-	    //backgroundColorSelector.addEventListener('change', onBackgroundColorSelectorChange, false);
-	    //container.appendChild(backgroundColorSelector.container);
-	    menu = new Menu();
-	    menu.foregroundColor.addEventListener('click', onMenuForegroundColor, false);
-	   // menu.backgroundColor.addEventListener('click', onMenuBackgroundColor, false);
-	    menu.save.addEventListener('click', onMenuSave, false);
-		menu.load.addEventListener('click', onMenuLoad, false)
-	    menu.clear.addEventListener('click', onMenuClear, false);
-	    menu.container.addEventListener('mouseover', onMenuMouseOver, false);
-	    menu.container.addEventListener('mouseout', onMenuMouseOut, false);
-	    container.appendChild(menu.container);
+    //backgroundColorSelector = new ColorSelector(palette);
+    //backgroundColorSelector.addEventListener('change', onBackgroundColorSelectorChange, false);
+    //container.appendChild(backgroundColorSelector.container);
+    menu = new Menu();
+    menu.foregroundColor.addEventListener('click', onMenuForegroundColor, false);
+    // menu.backgroundColor.addEventListener('click', onMenuBackgroundColor, false);
+    menu.save.addEventListener('click', onMenuSave, false);
+    menu.load.addEventListener('click', onMenuLoad, false)
+    menu.clear.addEventListener('click', onMenuClear, false);
+    menu.container.addEventListener('mouseover', onMenuMouseOver, false);
+    menu.container.addEventListener('mouseout', onMenuMouseOut, false);
+    container.appendChild(menu.container);
 }
 function setupScene() {
     container = document.createElement('div');
@@ -230,23 +246,7 @@ function setupScene() {
     //
     // 				}
     parent = new THREE.Object3D();
-    //parent.position.y = 50;
-    //objects.push(parent);
     scene.add(parent);
-    //mesh = new THREE.Mesh(geometry, getMaterial(Math.random() * 0xffffff));
-    //mesh.overdraw = true;
-    //mesh.color = mesh.materials[0].color.getHex();
-    //mesh.ThreeType = "cube";
-    //objects.push(mesh);
-    //scene.add(mesh);
-    //geometry = new THREE.SphereGeometry(radius, 20, 20);
-    //mesh = new THREE.Mesh(geometry, getMaterial(Math.random() * 0xffffff));
-    //mesh.overdraw = true;
-    //mesh.position.x = 200;
-    //mesh.color = mesh.materials[0].color.getHex();
-    //mesh.ThreeType = "sphere";
-    //objects.push(mesh);
-    //scene.add(mesh);
     plane = new THREE.Mesh(new THREE.PlaneGeometry(window.innerWidth, window.innerHeight, 8, 8), new THREE.MeshBasicMaterial({
         color: 0x000000,
         opacity: 0.50,
@@ -286,8 +286,8 @@ function isLocalStorageSupported() {
         return false;
     }
 }
-function isDnDSupported(){
-	return window.File && window.FileReader && window.FileList && window.Blob;
+function isDnDSupported() {
+    return window.File && window.FileReader && window.FileList && window.Blob;
 }
 function getMaterial(color) {
     return new THREE.MeshBasicMaterial({
@@ -322,27 +322,13 @@ function onForegroundColorSelectorChange(event)
 
 function onBackgroundColorSelectorChange(event) {}
 function onMenuSave() {
-    //save();
-	saveLocal();
+    saveLocal();
 }
 function onMenuLoad() {
-    //load();
-	loadLocal();
+    loadLocal();
 }
-function save() {
-    var name = showPrompt(true);
-    if (name === null) {
-        return alert("invalid file name");
-    } else {
-        var saveData = prepForJSON(objects);
-        var stringify = JSON.stringify(saveData);
-        return $.cookie(name, stringify, {
-            expires: 2
-        });
-    }
-}
-function saveLocal(){
-	//localStorage.setItem('firstName', 'Bugs');
+function saveLocal() {
+    //localStorage.setItem('firstName', 'Bugs');
     var name = showPrompt(true);
     if (name === null) {
         return alert("invalid file name");
@@ -352,20 +338,8 @@ function saveLocal(){
         return localStorage.setItem(name, stringify);
     }
 }
-function load() {
+function loadLocal() {
     var name = showPrompt(false);
-    if (name === null || $.cookie(name) === null) {
-        return alert("invalid file name");
-    } else {
-        onMenuClear();
-        loadedObs = JSON.parse($.cookie(name));
-        for (i = 0; i < loadedObs.length; i++) {
-            loadObject(loadedObs[i]);
-        }
-    }
-}
-function loadLocal(){
-	var name = showPrompt(false);
     if (name === null || localStorage.getItem(name) === null) {
         return alert("invalid file name");
     } else {
@@ -389,7 +363,6 @@ function showPrompt(save) {
         return null;
     }
 }
-
 function prepForJSON(objectList) {
     ret = [];
     for (var index in objectList) {
@@ -405,11 +378,10 @@ function prepForJSON(objectList) {
     }
     return ret;
 }
-
 function loadObject(object) {
     if (object === null || object === void 0) {} else {
         switch (object.geometry) {
-        case "cube":
+        case "rectangle":
             return makeRectangle(object.vertices, object.color, object.position, object.scale, object.rotation);
         case "sphere":
             return makeSphere(object.vertices, object.color, object.position, object.scale, object.rotation);
@@ -422,23 +394,13 @@ function loadObject(object) {
         }
     }
 }
-
 function onMenuClear()
  {
-    //scene.objects=[];
     INTERSECTED = null;
     SELECTED = null;
     objects = [];
     scene = new THREE.Scene();
-    //scene.fog = new THREE.Fog(0x000000, 1, 15000);
-    //var light = new THREE.PointLight(0xff2200);
-    //light.position.set(100, 100, 100);
-    //scene.add(light);
-    // var light = new THREE.AmbientLight(0x333333);
-    // scene.add(light);
     parent = new THREE.Object3D();
-    //parent.position.y = 50;
-    //objects.push(parent);
     scene.add(parent);
 
     plane = new THREE.Mesh(new THREE.PlaneGeometry(window.innerWidth, window.innerHeight, 8, 8), new THREE.MeshBasicMaterial({
@@ -534,6 +496,8 @@ function onDocumentMouseDown(event) {
     cleanPopUps();
     DRAGGING = true;
     event.preventDefault();
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     var vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
     projector.unprojectVector(vector, camera);
@@ -545,6 +509,10 @@ function onDocumentMouseDown(event) {
     if (intersects.length > 0) {
 
         SELECTED = intersects[0].object;
+		//console.log("originalPos being set to DRAG.position");
+		originalPos = new THREE.Vector3(SELECTED.position.x,SELECTED.position.y,SELECTED.position.z);
+		originalRot = new THREE.Vector3(SELECTED.rotation.x,SELECTED.rotation.y,SELECTED.rotation.z);
+		originalScl = new THREE.Vector3(SELECTED.scale.x,SELECTED.scale.y,SELECTED.scale.z);
         SELECTED.currentColor = SELECTED.materials[0].color.getHex();
         SELECTED.materials[0] = new THREE.MeshBasicMaterial({
             color: 0xf5894e
@@ -560,12 +528,17 @@ function onDocumentMouseDown(event) {
             SELECTED.materials[0].color.getHex(getObject(SELECTED).color)
         }
         SELECTED = null;
-        if (event.shiftKey) {
+        if (event.shiftKey && BRUSHTYPE !== 'RECTANGLE') {
             var intersects = ray.intersectScene(scene);
+			if(intersects[0].point)
+            	clicks.push(intersects[0].point);
+        } else if(event.shiftKey && BRUSHTYPE === 'RECTANGLE' && clicks.length < 2){
+			var intersects = ray.intersectScene(scene);
             if (intersects.length === 1) {
                 clicks.push(intersects[0].point);
             }
-        } else {
+		}
+		else{
             clicks = [];
         }
     }
@@ -574,7 +547,8 @@ function onDocumentMouseDown(event) {
 function onDocumentMouseMove(event) {
 
     event.preventDefault();
-
+	//if(originalPos)
+	//	console.log("originalPos= {" + originalPos.x +","+ originalPos.y+","+originalPos.z+"}");
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -584,6 +558,7 @@ function onDocumentMouseMove(event) {
     var ray = new THREE.Ray(camera.position, vector.subSelf(camera.position).normalize());
 
     if (SELECTED && DRAGGING) {
+		//console.log("dragging");
         action(ray);
         return;
     }
@@ -617,8 +592,23 @@ function onDocumentMouseMove(event) {
         container.style.cursor = 'auto';
 
     }
-    if (!event.shiftKey) {
+	if(event.shiftKey && clicks.length === 1 && BRUSHTYPE === 'RECTANGLE'){ //begin drawing rectangle
+		var color;
+		var intersects = ray.intersectObject(plane);
+		if(intersects[0].point)
+			pnt = intersects[0].point;
+		else
+			return;
+		var vec = new THREE.Vector3(clicks[0].x - pnt.x, clicks[0].y-pnt.y, clicks[0].z - pnt.z);
+		if(tmpRec)
+			parent.remove(tmpRec);
+		tmpRec = new THREE.Mesh(new THREE.CubeGeometry(10*Math.abs(vec.x), 10*Math.abs(vec.y), 5), getMaterial(typeof tmpRec === "undefined" ? randColor() : tmpRec.color));
+		parent.add(tmpRec);
+	}
+    else if (!event.shiftKey && clicks.length>0) {
         createObject(ray);
+		//if(tmpRec)
+		//	scene.remove(tmpRec);
         clicks = [];
     }
     render();
@@ -632,65 +622,101 @@ function onDocumentMouseUp(event) {
         plane.position.copy(INTERSECTED.position);
         DRAG = null;
     }
+	if(SELECTED){
+		addtoCommandList(SELECTED, CONTROLTYPE, originalPos, originalRot, originalScl);
+	}
+	
     container.style.cursor = 'auto';
 }
 function onDocumentKeyDown(event) {
-    switch (event.keyCode) {
+    switch (String.fromCharCode(event.keyCode)) {
         //actions
-    case 65:
+    case "A":
         //a
         controlsProps.selectionType = 0;
         CONTROLTYPE = 'MOVE';
         swoosh('MOVE');
         break;
-    case 83:
+    case "S":
         //s
         controlsProps.selectionType = 1;
         CONTROLTYPE = 'SCALE';
         swoosh('SCALE');
         break;
-    case 68:
+    case "D":
         //d
         controlsProps.selectionType = 2;
         CONTROLTYPE = 'ROTATE';
         swoosh('ROTATE');
         break;
-    case 70:
+    case "F":
         //f
         controlsProps.selectionType = 2;
         CONTROLTYPE = 'WARP';
         swoosh('WARP');
         break;
         //objects
-    case 49:
+    case "1":
         //1
         controlsProps.objectType = 0;
         BRUSHTYPE = 'POINT';
         swoosh('POINT');
         break;
-    case 50:
+    case "2":
         //2
         controlsProps.objectType = 1;
         BRUSHTYPE = 'LINE';
         swoosh('LINE');
         break;
-    case 51:
+    case "3":
         //3
         controlsProps.objectType = 2;
         BRUSHTYPE = 'CIRCLE';
         swoosh('CIRCLE');
         break;
-    case 52:
+    case "4":
         //4
         controlsProps.objectType = 3;
         BRUSHTYPE = 'POLYGON';
         swoosh('POLYGON');
         break;
-    case 53:
+    case "5":
         //5
         controlsProps.objectType = 4;
         BRUSHTYPE = 'RECTANGLE';
         swoosh('RECTANGLE');
+        break;
+    case "Z":
+        // undo
+        if (event.ctrlKey) {
+            if(undo())
+            	swoosh('UNDO');
+        }
+        break;
+    case "Y":
+        // redo
+        if (event.ctrlKey) {
+            if(redo())
+            	swoosh('REDO');
+        }
+        break;
+    case "V":
+        // paste
+        if (event.ctrlKey) {
+            swoosh('PASTE');
+        }
+        break;
+    case "C":
+        // copy
+        if (event.ctrlKey) {
+            swoosh('COPY');
+        }
+        break;
+    case "X":
+        //cut
+        if (event.ctrlKey) {
+            swoosh('CUT');
+        }
         break;
     }
 }
@@ -748,14 +774,6 @@ function createObject(ray) {
     case 'RECTANGLE':
         if (clicks.length > 1 && clicks.length < 5) {
             makeRectangle(clicks, randColor());
-            //clicks[1] = new THREE.Vector3(clicks[0].x + center.xlength, clicks[0].y, clicks[0].z);
-            //clicks[2] = new THREE.Vector3(clicks[1].x, clicks[1].y-center.ylength, clicks[1].z);
-            //clicks[3] = new THREE.Vector3(clicks[2].x - center.xlength, clicks[2].y, clicks[2].z);
-            //clicks.push(new THREE.Vector3(clicks[0]));
-            //var californiaShape = new THREE.Shape(clicks);
-            //var california3d = new THREE.ExtrudeGeometry( californiaShape, { amount: 5	} );
-            //var californiaPoints = californiaShape.createPointsGeometry();
-            //addMesh(california3d, Math.random() * 0xffffff , 0,0);
         }
         break;
     }
@@ -858,6 +876,189 @@ function addGeometry(geometry, points, spacedPoints, color, x, y, z, rx, ry, rz,
 
 }
 
+function addtoCommandList(object, type, pos, rot, scl) {
+    undoQueue = []; // you can no longer redo anything;
+	commandQueue.push({
+        object: object,
+        type: type,
+		position: pos,
+		rotation: rot,
+		scale: scl
+    });
+}
+function undo() {
+    if (commandQueue.length > 0) {
+        var prevObject = commandQueue[commandQueue.length - 1];
+        var cqIndex = commandQueue.indexOf(prevObject);
+        // commandQueue index
+        var oIndex = objects.indexOf(prevObject.object);
+        // objects index
+        switch (prevObject.type) {
+        case "ADD":
+            // object was added last time, so delete it
+            removeFromScene(prevObject, commandQueue);
+            prevObject.type = ACTION_TYPE.delete;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            render();
+            break;
+        case "DELETE":
+            // object was deleted last time, so add it back
+            commandQueue.splice(cqIndex, 1);
+            prevObject.type = ACTION_TYPE.add;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "ROTATE":
+            // object was rotated last time, so set rotation back to previous
+			console.log("oldRot= {" + prevObject.rotation.x +","+ prevObject.rotation.y+","+prevObject.rotation.z+"}");
+			console.log("newRot= {" + objects[oIndex].rotation.x +","+ objects[oIndex].rotation.y+","+objects[oIndex].rotation.z+"}");
+			pos = prevObject.rotation;
+			prevObject.rotation = objects[oIndex].rotation;
+			removeFromScene(prevObject, commandQueue);
+			prevObject.object.rotation = pos;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            break;
+        case "MOVE":
+            // object was moved last time, so set position back to previous
+			console.log("oldRot= {" + prevObject.position.x +","+ prevObject.position.y+","+prevObject.position.z+"}");
+			console.log("newRot= {" + objects[oIndex].position.x +","+ objects[oIndex].position.y+","+objects[oIndex].position.z+"}");
+			pos = prevObject.position;
+			prevObject.position = objects[oIndex].position;
+			removeFromScene(prevObject, commandQueue);
+			prevObject.object.position = pos;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "SCALE":
+            // object was scaled last time, so set scale back to previous
+            // change type
+			console.log("oldRot= {" + prevObject.scale.x +","+ prevObject.scale.y+","+prevObject.scale.z+"}");
+			console.log("newRot= {" + objects[oIndex].scale.x +","+ objects[oIndex].scale.y+","+objects[oIndex].scale.z+"}");
+			pos = prevObject.scale;
+			prevObject.scale = objects[oIndex].scale;
+			removeFromScene(prevObject, commandQueue);
+			prevObject.object.scale = pos;
+            undoQueue.push(prevObject);
+            // add it to undone queue
+			addToScene(prevObject.object, false);
+            render();
+            break;
+        }
+		return true;
+    }
+	return false;
+}
+function redo() {
+    if (undoQueue.length > 0) {
+        var prevObject = undoQueue[undoQueue.length - 1];
+        var uqIndex = undoQueue.indexOf(prevObject);
+        // commandQueue index
+        var oIndex = objects.indexOf(prevObject.object); // objects index
+        switch (prevObject.type) {
+        case "ADD":
+            // object was added last time, so delete it
+            removeFromScene(prevObject, undoQueue);
+            prevObject.type = ACTION_TYPE.delete;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            render();
+            break;
+        case "DELETE":
+            // object was deleted last time, so add it back
+            undoQueue.splice(uqIndex, 1);
+            prevObject.type = ACTION_TYPE.add;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "ROTATE":
+            // object was rotated last time, so set rotation back to previous
+			pos = prevObject.rotation;
+			prevObject.rotation = objects[oIndex].rotation;
+			removeFromScene(prevObject, undoQueue);
+			prevObject.object.rotation = pos;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "MOVE":
+            // object was moved last time, so set position back to previous
+			pos = prevObject.position;
+			prevObject.position = objects[oIndex].position;
+			removeFromScene(prevObject, undoQueue);
+			prevObject.object.position = pos;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "SCALE":
+            // object was scaled last time, so set scale back to normal
+			pos = prevObject.scale;
+			prevObject.scale = objects[oIndex].scale;
+			removeFromScene(prevObject, undoQueue);
+			prevObject.object.scale = pos;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        }
+		return true;
+    }
+	return false;
+}
+function copy() {
+		
+    }
+function paste() {
+
+    }
+function cut() {
+
+    }
+function addToScene(object, log) {
+	if(typeof log === "undefined")
+	  	addtoCommandList(object, ACTION_TYPE.add);
+	else if(log){
+		addtoCommandList(object, ACTION_TYPE.add);
+	}
+	
+    objects.push(object);
+    scene.add(object);
+}
+function removeFromScene(object, array) {
+    var cqIndex = array.indexOf(object);
+    // commandQueue index
+    var oIndex = objects.indexOf(object.object);
+    // objects index
+    if (cqIndex !== -1) {
+        array.splice(cqIndex, 1);
+    }
+    if (oIndex !== -1) {
+        objects.splice(oIndex, 1);
+    }
+    scene.remove(object.object);
+}
+
 function addSphere(points, color, position, scale, rotation) {
     geometry = new THREE.SphereGeometry(radius, 20, 20);
     mesh = new THREE.Mesh(geometry, getMaterial(color));
@@ -874,8 +1075,8 @@ function addSphere(points, color, position, scale, rotation) {
     }
     mesh.ThreeType = "sphere";
     mesh.vertices = clicks;
-    objects.push(mesh);
-    scene.add(mesh);
+    addToScene(mesh);
+
 }
 
 function addLine(points, color, position, scale, rotation) {
@@ -897,8 +1098,7 @@ function addLine(points, color, position, scale, rotation) {
     }
     line.ThreeType = "line";
     line.vertices = clicks;
-    objects.push(line);
-    parent.add(line);
+    addToScene(line);
 }
 
 function addMesh(geometry, color, position, scale, rotation) {
@@ -915,8 +1115,7 @@ function addMesh(geometry, color, position, scale, rotation) {
     }
     mesh.ThreeType = "poly";
     mesh.vertices = clicks;
-    objects.push(mesh);
-    parent.add(mesh);
+    addToScene(mesh);
 }
 
 function addPoint(point, color, position, scale, rotation) {
@@ -934,12 +1133,9 @@ function addPoint(point, color, position, scale, rotation) {
     }
     p.data = "unassigned";
     p.color = p.materials[0].color.getHex();
-    //var particles = new THREE.ParticleSystem( point, new THREE.ParticleBasicMaterial( { color: color, size: 2, opacity: 1 } ) );
-    //particles.position.set( centerx, centery, 0 );
     p.ThreeType = "point";
     p.vertices = clicks;
-    objects.push(p);
-    parent.add(p);
+    addToScene(p);
 }
 
 function addRectangle(points, color, position, scale, rotation) {
@@ -962,9 +1158,8 @@ function addRectangle(points, color, position, scale, rotation) {
     }
     mesh.color = mesh.materials[0].color.getHex();
     mesh.ThreeType = "rectangle";
-    mesh.vertices = clicks;
-    objects.push(mesh);
-    scene.add(mesh);
+	mesh.vertices = clicks;
+    addToScene(mesh);
 }
 
 function GetCenter(points) {
