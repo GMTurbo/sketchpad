@@ -95,7 +95,7 @@
 							z-index: 1;
 							position: absolute;
 							top: 5%;
-							left: 5%;
+							left: -500px;
 							width: 0;
 							height: 0;
 							-webkit-transition-property: opacity;
@@ -184,12 +184,14 @@
 	</script>
 	<script type="text/javascript">
 	function hidetext(textContainer) {
+		$('#messageContainer').css({"left":"-500px"});
 		$('#messageContainer').css({"height":"0"});
 		$('#messageContainer').css({"width":"0"});
 		$(textContainer).css({"opacity":"0"});
 		$(textContainer).css({"z-index":"1"});
 	}
 	function animateText(textContainer){
+		$('#messageContainer').css({"left":"5%"});
 		$('#messageContainer').css({"height":"25%"});
 		$('#messageContainer').css({"width":"25%"});
 		$(textContainer).css({"opacity":"0.5"});

@@ -315,8 +315,7 @@ function onMenuForegroundColor()
 function onMenuBackgroundColor() {}
 
 // COLOR SELECTORS
-function onForegroundColorSelectorChange(event)
- {
+function onForegroundColorSelectorChange(event){
     if (SELECTED) {
         COLOR = foregroundColorSelector.getColor();
         COLOR = RGB2HTML(COLOR[0], COLOR[1], COLOR[2]);
@@ -324,7 +323,6 @@ function onForegroundColorSelectorChange(event)
         setObjectData(SELECTED, 'color', COLOR);
     }
 }
-
 function onBackgroundColorSelectorChange(event) {}
 function onMenuSave() {
     saveLocal();
@@ -749,14 +747,17 @@ function action(ray) {
         break;
     case 'ROTATE':
         DRAG = SELECTED;
-        direction = new THREE.Vector3(mouse.x - DRAG.position.x, 0, -mouse.y - DRAG.position.y);
-        initSpeed = direction.length();
+        //var intersects = ray.intersectObject(plane);
+        //pnt = intersects[0].point;
+        //direction = new THREE.Vector3(pnt.x - DRAG.position.x, 0, pnt.y - DRAG.position.y);
+		direction = new THREE.Vector3(mouse.x - DRAG.position.x, 0, -mouse.y - DRAG.position.y);
+		direction.normalize();
         DRAG.rotation.z = Math.atan(direction.x / direction.z);
         break;
     case 'SCALE':
         DRAG = SELECTED;
         var intersects = ray.intersectObject(plane);
-        pnt = intersects[0].point.subSelf(offset);
+        pnt = intersects[0].point;
         direction = new THREE.Vector3(pnt.x - DRAG.position.x, 0, pnt.y - DRAG.position.y);
         if (direction.length() > 0.1) {
             DRAG.scale = new THREE.Vector3(direction.length() / radius, direction.length() / radius, direction.length() / radius);
@@ -787,7 +788,7 @@ function undo() {
         switch (prevObject.type) {
         case "ADD":
             // object was added last time, so delete it
-            removeFromScene(prevObject, commandQueue);
+            undoFromScene(prevObject, commandQueue);
             prevObject.type = ACTION_TYPE.delete;
             // change type
             undoQueue.push(prevObject);
@@ -810,7 +811,7 @@ function undo() {
             //console.log("newRot= {" + objects[oIndex].rotation.x + "," + objects[oIndex].rotation.y + "," + objects[oIndex].rotation.z + "}");
             pos = prevObject.rotation;
             prevObject.rotation = objects[oIndex].rotation;
-            removeFromScene(prevObject, commandQueue);
+            undoFromScene(prevObject, commandQueue);
             prevObject.object.rotation = pos;
             // change type
             undoQueue.push(prevObject);
@@ -823,7 +824,7 @@ function undo() {
             //console.log("newRot= {" + objects[oIndex].position.x + "," + objects[oIndex].position.y + "," + objects[oIndex].position.z + "}");
             pos = prevObject.position;
             prevObject.position = objects[oIndex].position;
-            removeFromScene(prevObject, commandQueue);
+            undoFromScene(prevObject, commandQueue);
             prevObject.object.position = pos;
             // change type
             undoQueue.push(prevObject);
@@ -838,7 +839,7 @@ function undo() {
             // console.log("newRot= {" + objects[oIndex].scale.x + "," + objects[oIndex].scale.y + "," + objects[oIndex].scale.z + "}");
             pos = prevObject.scale;
             prevObject.scale = objects[oIndex].scale;
-            removeFromScene(prevObject, commandQueue);
+            undoFromScene(prevObject, commandQueue);
             prevObject.object.scale = pos;
             undoQueue.push(prevObject);
             // add it to undone queue
@@ -860,7 +861,7 @@ function redo() {
         switch (prevObject.type) {
         case "ADD":
             // object was added last time, so delete it
-            removeFromScene(prevObject, undoQueue);
+            undoFromScene(prevObject, undoQueue);
             prevObject.type = ACTION_TYPE.delete;
             // change type
             commandQueue.push(prevObject);
@@ -881,7 +882,7 @@ function redo() {
             // object was rotated last time, so set rotation back to previous
             pos = prevObject.rotation;
             prevObject.rotation = objects[oIndex].rotation;
-            removeFromScene(prevObject, undoQueue);
+            undoFromScene(prevObject, undoQueue);
             prevObject.object.rotation = pos;
             // change type
             commandQueue.push(prevObject);
@@ -893,7 +894,7 @@ function redo() {
             // object was moved last time, so set position back to previous
             pos = prevObject.position;
             prevObject.position = objects[oIndex].position;
-            removeFromScene(prevObject, undoQueue);
+            undoFromScene(prevObject, undoQueue);
             prevObject.object.position = pos;
             // change type
             commandQueue.push(prevObject);
@@ -905,7 +906,7 @@ function redo() {
             // object was scaled last time, so set scale back to normal
             pos = prevObject.scale;
             prevObject.scale = objects[oIndex].scale;
-            removeFromScene(prevObject, undoQueue);
+            undoFromScene(prevObject, undoQueue);
             prevObject.object.scale = pos;
             // change type
             commandQueue.push(prevObject);
@@ -943,16 +944,12 @@ function cut() {
 
 // -------------------------- ADD/MAKE FUNCTIONS  ------------------------------------------
 function addToScene(object, log) {
-    if (typeof log === "undefined")
-    addtoCommandList(object, ACTION_TYPE.add);
-    else if (log) {
-        addtoCommandList(object, ACTION_TYPE.add);
-    }
-
+    if (typeof log === "undefined"){ addtoCommandList(object, ACTION_TYPE.add);}
+    else if (log) {addtoCommandList(object, ACTION_TYPE.add);}
     objects.push(object);
     scene.add(object);
 }
-function removeFromScene(object, array) {
+function undoFromScene(object, array) {
     var cqIndex = array.indexOf(object);
     // commandQueue index
     var oIndex = objects.indexOf(object.object);
