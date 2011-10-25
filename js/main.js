@@ -13,6 +13,11 @@ scene,
 renderer,
 projector;
 
+//for copying
+var copyObj;
+
+var DRAGGING = false;
+
 var objects = [],
 geometry,
 plane,
@@ -350,6 +355,9 @@ function loadLocal() {
         }
     }
 }
+function print() {
+    return window.open(renderer.domElement.toDataURL("image/png"), "SketchPad IMG");
+}
 function showPrompt(save) {
     var name;
     if (save) {
@@ -399,6 +407,8 @@ function onMenuClear()
     INTERSECTED = null;
     SELECTED = null;
     objects = [];
+    commandQueue = [];
+    undoQueue = [];
     scene = new THREE.Scene();
     parent = new THREE.Object3D();
     scene.add(parent);
@@ -491,12 +501,12 @@ function getObject(object) {
     }
     return null;
 }
-var DRAGGING = false;
+
 function onDocumentMouseDown(event) {
     cleanPopUps();
     DRAGGING = true;
     event.preventDefault();
-	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     var vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
@@ -509,10 +519,10 @@ function onDocumentMouseDown(event) {
     if (intersects.length > 0) {
 
         SELECTED = intersects[0].object;
-		//console.log("originalPos being set to DRAG.position");
-		originalPos = new THREE.Vector3(SELECTED.position.x,SELECTED.position.y,SELECTED.position.z);
-		originalRot = new THREE.Vector3(SELECTED.rotation.x,SELECTED.rotation.y,SELECTED.rotation.z);
-		originalScl = new THREE.Vector3(SELECTED.scale.x,SELECTED.scale.y,SELECTED.scale.z);
+        //console.log("originalPos being set to DRAG.position");
+        originalPos = new THREE.Vector3(SELECTED.position.x, SELECTED.position.y, SELECTED.position.z);
+        originalRot = new THREE.Vector3(SELECTED.rotation.x, SELECTED.rotation.y, SELECTED.rotation.z);
+        originalScl = new THREE.Vector3(SELECTED.scale.x, SELECTED.scale.y, SELECTED.scale.z);
         SELECTED.currentColor = SELECTED.materials[0].color.getHex();
         SELECTED.materials[0] = new THREE.MeshBasicMaterial({
             color: 0xf5894e
@@ -530,15 +540,15 @@ function onDocumentMouseDown(event) {
         SELECTED = null;
         if (event.shiftKey && BRUSHTYPE !== 'RECTANGLE') {
             var intersects = ray.intersectScene(scene);
-			if(intersects[0].point)
-            	clicks.push(intersects[0].point);
-        } else if(event.shiftKey && BRUSHTYPE === 'RECTANGLE' && clicks.length < 2){
-			var intersects = ray.intersectScene(scene);
+            if (intersects[0].point)
+            clicks.push(intersects[0].point);
+        } else if (event.shiftKey && BRUSHTYPE === 'RECTANGLE' && clicks.length < 2) {
+            var intersects = ray.intersectScene(scene);
             if (intersects.length === 1) {
                 clicks.push(intersects[0].point);
             }
-		}
-		else{
+        }
+        else {
             clicks = [];
         }
     }
@@ -547,8 +557,8 @@ function onDocumentMouseDown(event) {
 function onDocumentMouseMove(event) {
 
     event.preventDefault();
-	//if(originalPos)
-	//	console.log("originalPos= {" + originalPos.x +","+ originalPos.y+","+originalPos.z+"}");
+    //if(originalPos)
+    //	console.log("originalPos= {" + originalPos.x +","+ originalPos.y+","+originalPos.z+"}");
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -558,7 +568,7 @@ function onDocumentMouseMove(event) {
     var ray = new THREE.Ray(camera.position, vector.subSelf(camera.position).normalize());
 
     if (SELECTED && DRAGGING) {
-		//console.log("dragging");
+        //console.log("dragging");
         action(ray);
         return;
     }
@@ -592,23 +602,24 @@ function onDocumentMouseMove(event) {
         container.style.cursor = 'auto';
 
     }
-	if(event.shiftKey && clicks.length === 1 && BRUSHTYPE === 'RECTANGLE'){ //begin drawing rectangle
-		var color;
-		var intersects = ray.intersectObject(plane);
-		if(intersects[0].point)
-			pnt = intersects[0].point;
-		else
-			return;
-		var vec = new THREE.Vector3(clicks[0].x - pnt.x, clicks[0].y-pnt.y, clicks[0].z - pnt.z);
-		if(tmpRec)
-			parent.remove(tmpRec);
-		tmpRec = new THREE.Mesh(new THREE.CubeGeometry(10*Math.abs(vec.x), 10*Math.abs(vec.y), 5), getMaterial(typeof tmpRec === "undefined" ? randColor() : tmpRec.color));
-		parent.add(tmpRec);
-	}
-    else if (!event.shiftKey && clicks.length>0) {
+    if (event.shiftKey && clicks.length === 1 && BRUSHTYPE === 'RECTANGLE') {
+        //begin drawing rectangle
+        var color;
+        var intersects = ray.intersectObject(plane);
+        if (intersects[0].point)
+        pnt = intersects[0].point;
+        else
+        return;
+        var vec = new THREE.Vector3(clicks[0].x - pnt.x, clicks[0].y - pnt.y, clicks[0].z - pnt.z);
+        if (tmpRec)
+        parent.remove(tmpRec);
+        tmpRec = new THREE.Mesh(new THREE.CubeGeometry(10 * Math.abs(vec.x), 10 * Math.abs(vec.y), 5), getMaterial(typeof tmpRec === "undefined" ? randColor() : tmpRec.color));
+        parent.add(tmpRec);
+    }
+    else if (!event.shiftKey && clicks.length > 0) {
         createObject(ray);
-		//if(tmpRec)
-		//	scene.remove(tmpRec);
+        //if(tmpRec)
+        //	scene.remove(tmpRec);
         clicks = [];
     }
     render();
@@ -622,12 +633,13 @@ function onDocumentMouseUp(event) {
         plane.position.copy(INTERSECTED.position);
         DRAG = null;
     }
-	if(SELECTED){
-		addtoCommandList(SELECTED, CONTROLTYPE, originalPos, originalRot, originalScl);
-	}
-	
+    if (SELECTED) {
+        addtoCommandList(SELECTED, CONTROLTYPE, originalPos, originalRot, originalScl);
+    }
+
     container.style.cursor = 'auto';
 }
+// -------------------------- KEYBOARD EVENT HANDLERS  ------------------------------------------
 function onDocumentKeyDown(event) {
     switch (String.fromCharCode(event.keyCode)) {
         //actions
@@ -689,35 +701,43 @@ function onDocumentKeyDown(event) {
     case "Z":
         // undo
         if (event.ctrlKey) {
-            if(undo())
-            	swoosh('UNDO');
+            if (undo())
+            swoosh('UNDO');
         }
         break;
     case "Y":
         // redo
         if (event.ctrlKey) {
-            if(redo())
-            	swoosh('REDO');
+            if (redo())
+            swoosh('REDO');
         }
         break;
     case "V":
         // paste
         if (event.ctrlKey) {
+            paste();
             swoosh('PASTE');
         }
         break;
     case "C":
         // copy
         if (event.ctrlKey) {
+            copy();
             swoosh('COPY');
         }
         break;
     case "X":
         //cut
         if (event.ctrlKey) {
+            cut();
             swoosh('CUT');
         }
         break;
+    case "P":
+        //print
+        if (event.ctrlKey) {
+            print();
+        }
     }
 }
 function action(ray) {
@@ -746,7 +766,311 @@ function action(ray) {
         break;
     }
 }
+function addtoCommandList(object, type, pos, rot, scl) {
+    undoQueue = [];
+    // you can no longer redo anything;
+    commandQueue.push({
+        object: object,
+        type: type,
+        position: pos,
+        rotation: rot,
+        scale: scl
+    });
+}
+function undo() {
+    if (commandQueue.length > 0) {
+        var prevObject = commandQueue[commandQueue.length - 1];
+        var cqIndex = commandQueue.indexOf(prevObject);
+        // commandQueue index
+        var oIndex = objects.indexOf(prevObject.object);
+        // objects index
+        switch (prevObject.type) {
+        case "ADD":
+            // object was added last time, so delete it
+            removeFromScene(prevObject, commandQueue);
+            prevObject.type = ACTION_TYPE.delete;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            render();
+            break;
+        case "DELETE":
+            // object was deleted last time, so add it back
+            commandQueue.splice(cqIndex, 1);
+            prevObject.type = ACTION_TYPE.add;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "ROTATE":
+            // object was rotated last time, so set rotation back to previous
+            //console.log("oldRot= {" + prevObject.rotation.x + "," + prevObject.rotation.y + "," + prevObject.rotation.z + "}");
+            //console.log("newRot= {" + objects[oIndex].rotation.x + "," + objects[oIndex].rotation.y + "," + objects[oIndex].rotation.z + "}");
+            pos = prevObject.rotation;
+            prevObject.rotation = objects[oIndex].rotation;
+            removeFromScene(prevObject, commandQueue);
+            prevObject.object.rotation = pos;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            break;
+        case "MOVE":
+            // object was moved last time, so set position back to previous
+            //console.log("oldRot= {" + prevObject.position.x + "," + prevObject.position.y + "," + prevObject.position.z + "}");
+            //console.log("newRot= {" + objects[oIndex].position.x + "," + objects[oIndex].position.y + "," + objects[oIndex].position.z + "}");
+            pos = prevObject.position;
+            prevObject.position = objects[oIndex].position;
+            removeFromScene(prevObject, commandQueue);
+            prevObject.object.position = pos;
+            // change type
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "SCALE":
+            // object was scaled last time, so set scale back to previous
+            // change type
+            // console.log("oldRot= {" + prevObject.scale.x + "," + prevObject.scale.y + "," + prevObject.scale.z + "}");
+            // console.log("newRot= {" + objects[oIndex].scale.x + "," + objects[oIndex].scale.y + "," + objects[oIndex].scale.z + "}");
+            pos = prevObject.scale;
+            prevObject.scale = objects[oIndex].scale;
+            removeFromScene(prevObject, commandQueue);
+            prevObject.object.scale = pos;
+            undoQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        }
+        return true;
+    }
+    return false;
+}
+function redo() {
+    if (undoQueue.length > 0) {
+        var prevObject = undoQueue[undoQueue.length - 1];
+        var uqIndex = undoQueue.indexOf(prevObject);
+        // commandQueue index
+        var oIndex = objects.indexOf(prevObject.object);
+        // objects index
+        switch (prevObject.type) {
+        case "ADD":
+            // object was added last time, so delete it
+            removeFromScene(prevObject, undoQueue);
+            prevObject.type = ACTION_TYPE.delete;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            render();
+            break;
+        case "DELETE":
+            // object was deleted last time, so add it back
+            undoQueue.splice(uqIndex, 1);
+            prevObject.type = ACTION_TYPE.add;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "ROTATE":
+            // object was rotated last time, so set rotation back to previous
+            pos = prevObject.rotation;
+            prevObject.rotation = objects[oIndex].rotation;
+            removeFromScene(prevObject, undoQueue);
+            prevObject.object.rotation = pos;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "MOVE":
+            // object was moved last time, so set position back to previous
+            pos = prevObject.position;
+            prevObject.position = objects[oIndex].position;
+            removeFromScene(prevObject, undoQueue);
+            prevObject.object.position = pos;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        case "SCALE":
+            // object was scaled last time, so set scale back to normal
+            pos = prevObject.scale;
+            prevObject.scale = objects[oIndex].scale;
+            removeFromScene(prevObject, undoQueue);
+            prevObject.object.scale = pos;
+            // change type
+            commandQueue.push(prevObject);
+            // add it to undone queue
+            addToScene(prevObject.object, false);
+            render();
+            break;
+        }
+        return true;
+    }
+    return false;
+}
+function copy() {
+    if (SELECTED) {
+        copyObj = new THREE.Mesh(SELECTED.geometry, SELECTED.materials[0]);
+        copyObj.rotation.copy(SELECTED.rotation);
+        copyObj.scale.copy(SELECTED.scale);
+        copyObj.position = new THREE.Vector3(0, 0, 0);
+    }
+}
+function paste() {
+    if (copyObj) {
+        addToScene(copyObj);
+    }
+}
+function cut() {
+    if (SELECTED) {
+        copyObj = SELECTED;
+        copyObj.position = new THREE.Vector3(0, 0, 0);
+        removeFromScene(SELECTED);
+        INTERSECTED = null;
+        SELECTED = null;
+    }
+}
 
+// -------------------------- ADD/MAKE FUNCTIONS  ------------------------------------------
+function addToScene(object, log) {
+    if (typeof log === "undefined")
+    addtoCommandList(object, ACTION_TYPE.add);
+    else if (log) {
+        addtoCommandList(object, ACTION_TYPE.add);
+    }
+
+    objects.push(object);
+    scene.add(object);
+}
+function removeFromScene(object, array) {
+    var cqIndex = array.indexOf(object);
+    // commandQueue index
+    var oIndex = objects.indexOf(object.object);
+    // objects index
+    if (cqIndex !== -1) {
+        array.splice(cqIndex, 1);
+    }
+    if (oIndex !== -1) {
+        objects.splice(oIndex, 1);
+    }
+    scene.remove(object.object);
+}
+function removeFromScene(object) {
+    var oIndex = objects.indexOf(object);
+    // objects index
+    if (oIndex !== -1) {
+        objects.splice(oIndex, 1);
+    }
+    scene.remove(object);
+}
+function addSphere(points, color, position, scale, rotation) {
+    geometry = new THREE.SphereGeometry(radius, 20, 20);
+    mesh = new THREE.Mesh(geometry, getMaterial(color));
+    mesh.overdraw = true;
+    mesh.color = mesh.materials[0].color.getHex();
+    if (typeof position !== "undefined") {
+        mesh.position.copy(position);
+    }
+    if (typeof scale !== "undefined") {
+        mesh.scale.copy(scale);
+    }
+    if (typeof rotation !== "undefined") {
+        mesh.rotation.copy(rotation);
+    }
+    mesh.ThreeType = "sphere";
+    mesh.vertices = clicks;
+    addToScene(mesh);
+
+}
+function addLine(points, color, position, scale, rotation) {
+    // solid line
+    var line = new THREE.Line(points, new THREE.LineBasicMaterial({
+        color: color,
+        linewidth: 2
+    }));
+    line.updateMatrix();
+    line.color = line.materials[0].color.getHex();
+    if (typeof position !== "undefined") {
+        line.position.copy(position);
+    }
+    if (typeof scale !== "undefined") {
+        line.scale.copy(scale);
+    }
+    if (typeof rotation !== "undefined") {
+        line.rotation.copy(rotation);
+    }
+    line.ThreeType = "line";
+    line.vertices = clicks;
+    addToScene(line);
+}
+function addMesh(geometry, color, position, scale, rotation) {
+    var mesh = new THREE.Mesh(geometry, getMaterial(color));
+    mesh.color = mesh.materials[0].color.getHex();
+    if (typeof position !== "undefined") {
+        mesh.position.copy(position);
+    }
+    if (typeof scale !== "undefined") {
+        mesh.scale.copy(scale);
+    }
+    if (typeof rotation !== "undefined") {
+        mesh.rotation.copy(rotation);
+    }
+    mesh.ThreeType = "poly";
+    mesh.vertices = clicks;
+    addToScene(mesh);
+}
+function addPoint(point, color, position, scale, rotation) {
+    var geometry = new THREE.SphereGeometry(5, 5, 5);
+    var p = new THREE.Mesh(geometry, getMaterial(color));
+    p.position = point[0];
+    if (typeof position !== "undefined") {
+        p.position.copy(position);
+    }
+    if (typeof scale !== "undefined") {
+        p.scale.copy(scale);
+    }
+    if (typeof rotation !== "undefined") {
+        p.rotation.copy(rotation);
+    }
+    p.data = "unassigned";
+    p.color = p.materials[0].color.getHex();
+    p.ThreeType = "point";
+    p.vertices = clicks;
+    addToScene(p);
+}
+function addRectangle(points, color, position, scale, rotation) {
+    var rec = GetRectangle(points);
+
+    geometry = new THREE.CubeGeometry(rec.xlength, rec.ylength, 5);
+
+    mesh = new THREE.Mesh(geometry, getMaterial(color));
+
+    mesh.position = new THREE.Vector3(rec.x, rec.y, 0);
+
+    if (typeof position !== "undefined") {
+        mesh.position.copy(position);
+    }
+    if (typeof scale !== "undefined") {
+        mesh.scale.copy(scale);
+    }
+    if (typeof rotation !== "undefined") {
+        mesh.rotation.copy(rotation);
+    }
+    mesh.color = mesh.materials[0].color.getHex();
+    mesh.ThreeType = "rectangle";
+    mesh.vertices = clicks;
+    addToScene(mesh);
+}
 function createObject(ray) {
     switch (BRUSHTYPE) {
     case 'LINE':
@@ -805,6 +1129,7 @@ function makePoint(point, color, position, scale, rotation) {
     addPoint(clicks, color, position, scale, rotation);
 }
 
+//example i found. Not used in code
 function addGeometry(geometry, points, spacedPoints, color, x, y, z, rx, ry, rz, s) {
 
     // 3d shape
@@ -875,293 +1200,6 @@ function addGeometry(geometry, points, spacedPoints, color, x, y, z, rx, ry, rz,
     parent.add(particles2);
 
 }
-
-function addtoCommandList(object, type, pos, rot, scl) {
-    undoQueue = []; // you can no longer redo anything;
-	commandQueue.push({
-        object: object,
-        type: type,
-		position: pos,
-		rotation: rot,
-		scale: scl
-    });
-}
-function undo() {
-    if (commandQueue.length > 0) {
-        var prevObject = commandQueue[commandQueue.length - 1];
-        var cqIndex = commandQueue.indexOf(prevObject);
-        // commandQueue index
-        var oIndex = objects.indexOf(prevObject.object);
-        // objects index
-        switch (prevObject.type) {
-        case "ADD":
-            // object was added last time, so delete it
-            removeFromScene(prevObject, commandQueue);
-            prevObject.type = ACTION_TYPE.delete;
-            // change type
-            undoQueue.push(prevObject);
-            // add it to undone queue
-            render();
-            break;
-        case "DELETE":
-            // object was deleted last time, so add it back
-            commandQueue.splice(cqIndex, 1);
-            prevObject.type = ACTION_TYPE.add;
-            // change type
-            undoQueue.push(prevObject);
-            // add it to undone queue
-            addToScene(prevObject.object, false);
-            render();
-            break;
-        case "ROTATE":
-            // object was rotated last time, so set rotation back to previous
-			console.log("oldRot= {" + prevObject.rotation.x +","+ prevObject.rotation.y+","+prevObject.rotation.z+"}");
-			console.log("newRot= {" + objects[oIndex].rotation.x +","+ objects[oIndex].rotation.y+","+objects[oIndex].rotation.z+"}");
-			pos = prevObject.rotation;
-			prevObject.rotation = objects[oIndex].rotation;
-			removeFromScene(prevObject, commandQueue);
-			prevObject.object.rotation = pos;
-            // change type
-            undoQueue.push(prevObject);
-            // add it to undone queue
-            addToScene(prevObject.object, false);
-            break;
-        case "MOVE":
-            // object was moved last time, so set position back to previous
-			console.log("oldRot= {" + prevObject.position.x +","+ prevObject.position.y+","+prevObject.position.z+"}");
-			console.log("newRot= {" + objects[oIndex].position.x +","+ objects[oIndex].position.y+","+objects[oIndex].position.z+"}");
-			pos = prevObject.position;
-			prevObject.position = objects[oIndex].position;
-			removeFromScene(prevObject, commandQueue);
-			prevObject.object.position = pos;
-            // change type
-            undoQueue.push(prevObject);
-            // add it to undone queue
-            addToScene(prevObject.object, false);
-            render();
-            break;
-        case "SCALE":
-            // object was scaled last time, so set scale back to previous
-            // change type
-			console.log("oldRot= {" + prevObject.scale.x +","+ prevObject.scale.y+","+prevObject.scale.z+"}");
-			console.log("newRot= {" + objects[oIndex].scale.x +","+ objects[oIndex].scale.y+","+objects[oIndex].scale.z+"}");
-			pos = prevObject.scale;
-			prevObject.scale = objects[oIndex].scale;
-			removeFromScene(prevObject, commandQueue);
-			prevObject.object.scale = pos;
-            undoQueue.push(prevObject);
-            // add it to undone queue
-			addToScene(prevObject.object, false);
-            render();
-            break;
-        }
-		return true;
-    }
-	return false;
-}
-function redo() {
-    if (undoQueue.length > 0) {
-        var prevObject = undoQueue[undoQueue.length - 1];
-        var uqIndex = undoQueue.indexOf(prevObject);
-        // commandQueue index
-        var oIndex = objects.indexOf(prevObject.object); // objects index
-        switch (prevObject.type) {
-        case "ADD":
-            // object was added last time, so delete it
-            removeFromScene(prevObject, undoQueue);
-            prevObject.type = ACTION_TYPE.delete;
-            // change type
-            commandQueue.push(prevObject);
-            // add it to undone queue
-            render();
-            break;
-        case "DELETE":
-            // object was deleted last time, so add it back
-            undoQueue.splice(uqIndex, 1);
-            prevObject.type = ACTION_TYPE.add;
-            // change type
-            commandQueue.push(prevObject);
-            // add it to undone queue
-            addToScene(prevObject.object, false);
-            render();
-            break;
-        case "ROTATE":
-            // object was rotated last time, so set rotation back to previous
-			pos = prevObject.rotation;
-			prevObject.rotation = objects[oIndex].rotation;
-			removeFromScene(prevObject, undoQueue);
-			prevObject.object.rotation = pos;
-            // change type
-            commandQueue.push(prevObject);
-            // add it to undone queue
-            addToScene(prevObject.object, false);
-            render();
-            break;
-        case "MOVE":
-            // object was moved last time, so set position back to previous
-			pos = prevObject.position;
-			prevObject.position = objects[oIndex].position;
-			removeFromScene(prevObject, undoQueue);
-			prevObject.object.position = pos;
-            // change type
-            commandQueue.push(prevObject);
-            // add it to undone queue
-            addToScene(prevObject.object, false);
-            render();
-            break;
-        case "SCALE":
-            // object was scaled last time, so set scale back to normal
-			pos = prevObject.scale;
-			prevObject.scale = objects[oIndex].scale;
-			removeFromScene(prevObject, undoQueue);
-			prevObject.object.scale = pos;
-            // change type
-            commandQueue.push(prevObject);
-            // add it to undone queue
-            addToScene(prevObject.object, false);
-            render();
-            break;
-        }
-		return true;
-    }
-	return false;
-}
-function copy() {
-		
-    }
-function paste() {
-
-    }
-function cut() {
-
-    }
-function addToScene(object, log) {
-	if(typeof log === "undefined")
-	  	addtoCommandList(object, ACTION_TYPE.add);
-	else if(log){
-		addtoCommandList(object, ACTION_TYPE.add);
-	}
-	
-    objects.push(object);
-    scene.add(object);
-}
-function removeFromScene(object, array) {
-    var cqIndex = array.indexOf(object);
-    // commandQueue index
-    var oIndex = objects.indexOf(object.object);
-    // objects index
-    if (cqIndex !== -1) {
-        array.splice(cqIndex, 1);
-    }
-    if (oIndex !== -1) {
-        objects.splice(oIndex, 1);
-    }
-    scene.remove(object.object);
-}
-
-function addSphere(points, color, position, scale, rotation) {
-    geometry = new THREE.SphereGeometry(radius, 20, 20);
-    mesh = new THREE.Mesh(geometry, getMaterial(color));
-    mesh.overdraw = true;
-    mesh.color = mesh.materials[0].color.getHex();
-    if (typeof position !== "undefined") {
-        mesh.position = new THREE.Vector3(position.x, position.y, position.z);
-    }
-    if (typeof scale !== "undefined") {
-        mesh.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
-    }
-    if (typeof rotation !== "undefined") {
-        mesh.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
-    }
-    mesh.ThreeType = "sphere";
-    mesh.vertices = clicks;
-    addToScene(mesh);
-
-}
-
-function addLine(points, color, position, scale, rotation) {
-    // solid line
-    var line = new THREE.Line(points, new THREE.LineBasicMaterial({
-        color: color,
-        linewidth: 2
-    }));
-    line.updateMatrix();
-    line.color = line.materials[0].color.getHex();
-    if (typeof position !== "undefined") {
-        line.position = new THREE.Vector3(position.x, position.y, position.z);
-    }
-    if (typeof scale !== "undefined") {
-        line.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
-    }
-    if (typeof rotation !== "undefined") {
-        line.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
-    }
-    line.ThreeType = "line";
-    line.vertices = clicks;
-    addToScene(line);
-}
-
-function addMesh(geometry, color, position, scale, rotation) {
-    var mesh = new THREE.Mesh(geometry, getMaterial(color));
-    mesh.color = mesh.materials[0].color.getHex();
-    if (typeof position !== "undefined") {
-        mesh.position = new THREE.Vector3(position.x, position.y, position.z);
-    }
-    if (typeof scale !== "undefined") {
-        mesh.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
-    }
-    if (typeof rotation !== "undefined") {
-        mesh.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
-    }
-    mesh.ThreeType = "poly";
-    mesh.vertices = clicks;
-    addToScene(mesh);
-}
-
-function addPoint(point, color, position, scale, rotation) {
-    var geometry = new THREE.SphereGeometry(5, 5, 5);
-    var p = new THREE.Mesh(geometry, getMaterial(color));
-    p.position = point[0];
-    if (typeof position !== "undefined") {
-        p.position = new THREE.Vector3(position.x, position.y, position.z);
-    }
-    if (typeof scale !== "undefined") {
-        p.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
-    }
-    if (typeof rotation !== "undefined") {
-        p.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
-    }
-    p.data = "unassigned";
-    p.color = p.materials[0].color.getHex();
-    p.ThreeType = "point";
-    p.vertices = clicks;
-    addToScene(p);
-}
-
-function addRectangle(points, color, position, scale, rotation) {
-    var rec = GetRectangle(points);
-
-    geometry = new THREE.CubeGeometry(rec.xlength, rec.ylength, 5);
-
-    mesh = new THREE.Mesh(geometry, getMaterial(color));
-
-    mesh.position = new THREE.Vector3(rec.x, rec.y, 0);
-
-    if (typeof position !== "undefined") {
-        mesh.position = new THREE.Vector3(position.x, position.y, position.z);
-    }
-    if (typeof scale !== "undefined") {
-        mesh.scale = new THREE.Vector3(scale.x, scale.y, scale.z);
-    }
-    if (typeof rotation !== "undefined") {
-        mesh.rotation = new THREE.Vector3(rotation.x, rotation.y, rotation.z);
-    }
-    mesh.color = mesh.materials[0].color.getHex();
-    mesh.ThreeType = "rectangle";
-	mesh.vertices = clicks;
-    addToScene(mesh);
-}
-
 function GetCenter(points) {
     var maxX = maxY = -1e6;
     var minX = minY = 1e6;
@@ -1187,7 +1225,6 @@ function GetCenter(points) {
     };
     return ret;
 }
-
 function GetRectangle(points) {
     var maxX = maxY = -1e6;
     var minX = minY = 1e6;
