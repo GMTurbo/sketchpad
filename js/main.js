@@ -82,8 +82,6 @@ var mesh,
 initSpeed = 0;
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
-//var totalLength = Math.sqrt(Math.pow(windowHalfX*2,2) + Math.pow(windowHalfY*2,2)); // used for the scaling function
-//document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 var lightS = {
     type: 'v3',
     value: new THREE.Vector3(1, 1, 0)
@@ -214,45 +212,12 @@ function setupScene() {
     container = document.createElement('div');
     document.body.appendChild(container);
     height = window.innerHeight;
-    //camera = new THREE.OrthographicCamera(0, aspect_ratio * 1000, 1000, 0, 10000, -10000);
     camera = new THREE.OrthographicCamera(window.innerWidth / -2, window.innerWidth / 2, height / 2, height / -2, 1, 1000);
-    //camera = new THREE.OrthographicCamera(0, aspect_ratio * 1000, 1000, 0, 10000, -10000);
     camera.position.set(0, 0, 800);
-    //camera.position.z = 600;
     scene = new THREE.Scene();
-    //scene.fog = new THREE.Fog(0x000000, 1, 1500);
-    //var light = new THREE.PointLight(0xff2200);
-    //light.position.set(100, 100, 100);
-    //scene.add(light);
-    //var light = new THREE.AmbientLight(0x333333);
-    //scene.add(light);
-    //var geometry = new THREE.CubeGeometry(100, 100, 1);
-    //var material = new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff, shading: THREE.FlatShading } );
-    // construct 8 blend shapes
-    // for ( var i = 0; i < geometry.vertices.length; i ++ ) {
-    //
-    // 					var vertices = [];
-    //
-    // 					for ( var v = 0; v < geometry.vertices.length; v ++ ) {
-    //
-    // 						vertices.push( new THREE.Vertex( geometry.vertices[ v ].position.clone() ) )
-    //
-    // 						if ( v === i ) {
-    //
-    // 							vertices[ vertices.length - 1 ].position.x *= 2;
-    // 							vertices[ vertices.length - 1 ].position.y *= 2;
-    // 							vertices[ vertices.length - 1 ].position.z *= 2;
-    //
-    // 						}
-    //
-    // 					}
-    //
-    // 					geometry.morphTargets.push( { name: "target" + i, vertices: vertices } );
-    //
-    // 				}
     parent = new THREE.Object3D();
     scene.add(parent);
-    plane = new THREE.Mesh(new THREE.PlaneGeometry(window.innerWidth, window.innerHeight, 8, 8), new THREE.MeshBasicMaterial({
+    plane = new THREE.Mesh(new THREE.PlaneGeometry(2*window.innerWidth, 2*window.innerHeight, 2*8, 2*8), new THREE.MeshBasicMaterial({
         color: 0x000000,
         opacity: 0.50,
         transparent: true,
@@ -269,10 +234,8 @@ function setupScene() {
     });
 
     renderer.setSize(window.innerWidth, window.innerHeight);
-    //container.appendChild( renderer.domElement );
     renderer.sortObjects = false;
     projector = new THREE.Projector();
-
 
     renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
     renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
@@ -476,16 +439,8 @@ function setObjectData(object, property, value) {
     if (index >= 0) {
         switch (property) {
         case 'color':
-            objects[index].materials[0] = new THREE.MeshBasicMaterial({
-                color: value
-            });
+            objects[index].materials[0] = getMaterial(value);
             objects[index].color = objects[index].materials[0].color.getHex();
-            return true;
-            break;
-        case 'scale':
-            return true;
-            break;
-        case 'rotation':
             return true;
             break;
         }
@@ -846,6 +801,8 @@ function undo() {
             addToScene(prevObject.object, false);
             render();
             break;
+		case "COLOR":
+			break;
         }
         return true;
     }
@@ -1126,7 +1083,7 @@ function makePoint(point, color, position, scale, rotation) {
     addPoint(clicks, color, position, scale, rotation);
 }
 
-//example i found. Not used in code
+//example I found. Not used in code
 function addGeometry(geometry, points, spacedPoints, color, x, y, z, rx, ry, rz, s) {
 
     // 3d shape
