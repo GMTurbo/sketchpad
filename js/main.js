@@ -491,15 +491,10 @@ function onDocumentMouseDown(event) {
             SELECTED.materials[0].color.getHex(getObject(SELECTED).color)
         }
         SELECTED = null;
-        if (event.shiftKey && BRUSHTYPE !== 'RECTANGLE') {
+        if (event.shiftKey) {
             var intersects = ray.intersectScene(scene);
             if (intersects[0].point)
             clicks.push(intersects[0].point);
-        } else if (event.shiftKey && BRUSHTYPE === 'RECTANGLE' && clicks.length < 2) {
-            var intersects = ray.intersectScene(scene);
-            if (intersects.length === 1) {
-                clicks.push(intersects[0].point);
-            }
         }
         else {
             clicks = [];
@@ -555,21 +550,21 @@ function onDocumentMouseMove(event) {
         container.style.cursor = 'auto';
 
     }
-    if (event.shiftKey && clicks.length === 1 && BRUSHTYPE === 'RECTANGLE') {
-        //begin drawing rectangle
-        var color;
-        var intersects = ray.intersectObject(plane);
-        if (intersects[0].point)
-        pnt = intersects[0].point;
-        else
-        return;
-        var vec = new THREE.Vector3(clicks[0].x - pnt.x, clicks[0].y - pnt.y, clicks[0].z - pnt.z);
-        if (tmpRec)
-        parent.remove(tmpRec);
-        tmpRec = new THREE.Mesh(new THREE.CubeGeometry(10 * Math.abs(vec.x), 10 * Math.abs(vec.y), 5), getMaterial(typeof tmpRec === "undefined" ? randColor() : tmpRec.color));
-        parent.add(tmpRec);
-    }
-    else if (!event.shiftKey && clicks.length > 0) {
+   // if (event.shiftKey && clicks.length === 1 && BRUSHTYPE === 'RECTANGLE') {
+   //     //begin drawing rectangle
+    //    var color;
+    //    var intersects = ray.intersectObject(plane);
+    //    if (intersects[0].point)
+   //     pnt = intersects[0].point;
+   //     else
+   //     return;
+   //     var vec = new THREE.Vector3(clicks[0].x - pnt.x, clicks[0].y - pnt.y, clicks[0].z - pnt.z);
+   //     if (tmpRec)
+   //     parent.remove(tmpRec);
+   //     tmpRec = new THREE.Mesh(new THREE.CubeGeometry(10 * Math.abs(vec.x), 10 * Math.abs(vec.y), 5), getMaterial(typeof tmpRec === "undefined" ? randColor() : tmpRec.color));
+   //     parent.add(tmpRec);
+   // }
+    if (!event.shiftKey && clicks.length > 0) {
         createObject(ray);
         //if(tmpRec)
         //	scene.remove(tmpRec);
